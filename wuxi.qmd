@@ -3,34 +3,63 @@ title: "My Hometown"
 ---
 
 # Wuxi
+
 <span style="font-size:20px;">
 Wuxi is a city in Jiangsu Province, known for its beautiful scenery and rich culture.
 </span>
-![](images/wuxi_lake.jpg){width=50%}
 
+![](images/wuxi_lake.jpg){width=80%}
 
 ---
 
 ## 🌿 Taihu Lake
 
-![](images/taihu.jpg){width=50%}
+::: {.columns align="center"}
+
+::: {.column width="58%"}
+![](images/taihu.jpg){width=100%}
+:::
+
+::: {.column width="42%"}
 <span style="font-size:20px;">
 Taihu Lake is one of the largest freshwater lakes in China and a symbol of Wuxi.
 </span>
+:::
+
+:::
+
 ---
 
 ## 🏯 Lingshan Buddha
 
-![](images/lingshan.jpg){width=50%}
+::: {.columns align="center"}
+
+::: {.column width="58%"}
+![](images/lingshan.jpg){width=100%}
+:::
+
+::: {.column width="42%"}
 <span style="font-size:20px;">
 The Lingshan Grand Buddha is one of the tallest Buddha statues in the world.
 </span>
+:::
+
+:::
+
 ---
 
 ## 🍜 Local Food
 
-![](images/wuxi_food.jpg){width=70%}
+::: {.columns align="center"}
+
+::: {.column width="58%"}
+![](images/wuxi_food.jpg){width=100%}
+:::
+
+::: {.column width="42%"}
 <span style="font-size:20px;">
-Wuxi cuisine is famous for its slightly sweet taste.  
-Popular dishes include spare ribs and soup dumplings.
+Wuxi cuisine is famous for its slightly sweet taste. Popular dishes include spare ribs and soup dumplings.
 </span>
+:::
+
+:::
