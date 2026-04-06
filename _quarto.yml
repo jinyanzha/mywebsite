@@ -6,6 +6,8 @@ website:
   title: "mywebsite"
   navbar:
     left:
+      - href: index.qmd
+        text: Home
       - href: wuxi.qmd
         text: Wuxi
 
