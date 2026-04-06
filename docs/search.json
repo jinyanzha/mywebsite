@@ -1,10 +1,31 @@
 [
   {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Jinyan Zha",
+    "objectID": "wuxi.html",
+    "href": "wuxi.html",
+    "title": "Wuxi, My Hometown",
     "section": "",
-    "text": "# Welcome\n\nHi, I’m a Biostatistics student at UMich.\n\n## About me\n- MS in Biostatistics\n- Interested in statistical computing\n\n## Projects\n- CV strategy project"
+    "text": "Wuxi is a city in Jiangsu Province, known for its beautiful scenery and rich culture.\n\n\n\n\nTaihu Lake is one of the largest freshwater lakes in China and a symbol of Wuxi.\n\n\n\n\n\nThe Lingshan Grand Buddha is one of the tallest Buddha statues in the world.\n\n\n\n\n\nWuxi cuisine is famous for its slightly sweet taste.\nPopular dishes include spare ribs and soup dumplings."
+  },
+  {
+    "objectID": "wuxi.html#taihu-lake",
+    "href": "wuxi.html#taihu-lake",
+    "title": "Wuxi, My Hometown",
+    "section": "",
+    "text": "Taihu Lake is one of the largest freshwater lakes in China and a symbol of Wuxi."
+  },
+  {
+    "objectID": "wuxi.html#lingshan-buddha",
+    "href": "wuxi.html#lingshan-buddha",
+    "title": "Wuxi, My Hometown",
+    "section": "",
+    "text": "The Lingshan Grand Buddha is one of the tallest Buddha statues in the world."
+  },
+  {
+    "objectID": "wuxi.html#local-food",
+    "href": "wuxi.html#local-food",
+    "title": "Wuxi, My Hometown",
+    "section": "",
+    "text": "Wuxi cuisine is famous for its slightly sweet taste.\nPopular dishes include spare ribs and soup dumplings."
   },
   {
     "objectID": "about.html",
@@ -12,5 +33,12 @@
     "title": "About",
     "section": "",
     "text": "# About\n\nHi, this is my website."
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Jinyan Zha",
+    "section": "",
+    "text": "# Welcome\n\nHi, I’m a Biostatistics student at UMich.\n\n## About me\n- MS in Biostatistics\n- Interested in statistical computing\n\n## Projects\n- CV strategy project"
   }
 ]
