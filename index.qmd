@@ -1,0 +1,14 @@
+---
+title: "Jinyan Zha"
+---
+
+\# Welcome\
+\
+Hi, I'm a Biostatistics student at UMich.\
+\
+\## About me\
+- MS in Biostatistics\
+- Interested in statistical computing\
+\
+\## Projects\
+- CV strategy project
