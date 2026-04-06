@@ -37,8 +37,29 @@
   {
     "objectID": "index.html",
     "href": "index.html",
-    "title": "Jinyan Zha",
+    "title": "Home",
     "section": "",
-    "text": "# Welcome\n\nHi, I’m a Biostatistics student at UMich.\n\n## About me\n- MS in Biostatistics\n- Interested in statistical computing\n\n## Projects\n- CV strategy project"
+    "text": "Hi, I’m a Biostatistics graduate student at the University of Michigan.\nWelcome to my personal website!\n\n\n\n\n\n🎂 Birthday: November 6, 1998\n\n📍 Born in: Wuxi, Jiangsu, China\n\n🎓 Major: Biostatistics (M.S.)\n\n💡 Interests: Statistical computing, machine learning, data analysis\n\n🌎 Currently in: Ann Arbor, Michigan\n\n\n\n\n\n\n\n\nR (tidyverse, modeling, visualization)\n\nPython (data processing, analysis)\n\nStatistical modeling (GLM, GEE, survival analysis)\n\nData visualization & reporting (Quarto, ggplot2)\n\n\n\n\n\n\n\nI grew up in Wuxi, a beautiful city near Taihu Lake in eastern China.\nYou can learn more about my hometown here 👉 Wuxi Page"
+  },
+  {
+    "objectID": "index.html#about-me",
+    "href": "index.html#about-me",
+    "title": "Home",
+    "section": "",
+    "text": "🎂 Birthday: November 6, 1998\n\n📍 Born in: Wuxi, Jiangsu, China\n\n🎓 Major: Biostatistics (M.S.)\n\n💡 Interests: Statistical computing, machine learning, data analysis\n\n🌎 Currently in: Ann Arbor, Michigan"
+  },
+  {
+    "objectID": "index.html#skills",
+    "href": "index.html#skills",
+    "title": "Home",
+    "section": "",
+    "text": "R (tidyverse, modeling, visualization)\n\nPython (data processing, analysis)\n\nStatistical modeling (GLM, GEE, survival analysis)\n\nData visualization & reporting (Quarto, ggplot2)"
+  },
+  {
+    "objectID": "index.html#more-about-me",
+    "href": "index.html#more-about-me",
+    "title": "Home",
+    "section": "",
+    "text": "I grew up in Wuxi, a beautiful city near Taihu Lake in eastern China.\nYou can learn more about my hometown here 👉 Wuxi Page"
   }
 ]
