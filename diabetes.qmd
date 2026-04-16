@@ -198,14 +198,37 @@ ctr_coords <- st_coordinates(ctr)
 ctr$x <- ctr_coords[, 1]
 ctr$y <- ctr_coords[, 2]
 
+# 小州手动 nudge，避免引导线满天飞
+small <- c("CT","RI","MA","NH","VT","NJ","DE","DC","MD")
+ctr$nudge_x <- 0; ctr$nudge_y <- 0
+ctr$nudge_x[ctr$STUSPS == "CT"] <-  4e5
+ctr$nudge_x[ctr$STUSPS == "RI"] <-  5e5
+ctr$nudge_x[ctr$STUSPS == "MA"] <-  4e5
+ctr$nudge_y[ctr$STUSPS == "MA"] <-  1e5
+ctr$nudge_x[ctr$STUSPS == "NH"] <-  3e5
+ctr$nudge_y[ctr$STUSPS == "VT"] <-  1.5e5
+ctr$nudge_x[ctr$STUSPS == "NJ"] <-  4e5
+ctr$nudge_y[ctr$STUSPS == "NJ"] <- -1e5
+ctr$nudge_x[ctr$STUSPS == "DE"] <-  4e5
+ctr$nudge_y[ctr$STUSPS == "DE"] <- -1e5
+ctr$nudge_x[ctr$STUSPS == "DC"] <-  4e5
+ctr$nudge_y[ctr$STUSPS == "DC"] <- -2e5
+ctr$nudge_x[ctr$STUSPS == "MD"] <-  3e5
+ctr$nudge_y[ctr$STUSPS == "MD"] <- -2.5e5
+
 ggplot(states_poly) +
   geom_sf(aes(fill = diabetes), color = "white", linewidth = 0.3) +
-  geom_text_repel(data = ctr, aes(x = x, y = y, label = STUSPS),
-                  size = 2.6, color = "grey20",
-                  max.overlaps = 50,
+  # 大州：直接放在质心
+  geom_sf_text(data = states_poly |> filter(!STUSPS %in% small),
+               aes(label = STUSPS), size = 2.6, color = "grey20") +
+  # 小州：用 nudge 推到旁边 + 引导线
+  geom_text_repel(data = ctr |> filter(STUSPS %in% small),
+                  aes(x = x, y = y, label = STUSPS),
+                  size = 2.4, color = "grey20",
+                  nudge_x = ctr$nudge_x[ctr$STUSPS %in% small],
+                  nudge_y = ctr$nudge_y[ctr$STUSPS %in% small],
                   segment.size = 0.3, segment.color = "grey50",
-                  min.segment.length = 0,
-                  box.padding = 0.3, point.padding = 0.1) +
+                  min.segment.length = 0) +
   scale_fill_distiller(palette = "YlOrRd", direction = 1,
                        name = "Diabetes\nprevalence (%)",
                        na.value = "grey90") +
