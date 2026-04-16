@@ -243,7 +243,7 @@ leaflet(map_df) |>
       zoom        = 10,
       openPopup   = TRUE,
       propertyName = "label",
-      textPlaceholder = "Search county (e.g. Cook, IL)"))
+      textPlaceholder = "Search by county name (e.g. Wayne, Cook)"))
 ```
 
 **Interpretation.** The county-level map reveals patterns invisible at the state scale: a continuous darkness across the Mississippi Delta and Black Belt, a clear Appalachian spine of elevated prevalence through West Virginia and eastern Kentucky, bright-red isolated hotspots on Northern Plains reservations and South Texas border counties, and striking *within-state* gradients in large states like Texas (dark border counties vs. lighter metro suburbs). This heterogeneity is exactly what motivates using the full ~3,000-county sample in regression rather than collapsing to state aggregates.
