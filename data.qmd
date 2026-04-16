@@ -188,6 +188,58 @@ ggplot(merged, aes(diabetes)) +
 
 ## 4.2 Covariate Distributions
 
+```{r tbl-cov-summary}
+#| tbl-cap: "Summary statistics for the four ACS covariates (N = 3,143 counties)."
+merged |>
+  summarise(
+    `Poverty rate (%)`           = list(c(N = sum(!is.na(poverty_pct)),
+                                          Mean = mean(poverty_pct),
+                                          SD = sd(poverty_pct),
+                                          Min = min(poverty_pct),
+                                          Median = median(poverty_pct),
+                                          Max = max(poverty_pct))),
+    `Uninsured rate (%)`         = list(c(N = sum(!is.na(uninsured_pct)),
+                                          Mean = mean(uninsured_pct),
+                                          SD = sd(uninsured_pct),
+                                          Min = min(uninsured_pct),
+                                          Median = median(uninsured_pct),
+                                          Max = max(uninsured_pct))),
+    `Median household income ($)` = list(c(N = sum(!is.na(median_income)),
+                                          Mean = mean(median_income),
+                                          SD = sd(median_income),
+                                          Min = min(median_income),
+                                          Median = median(median_income),
+                                          Max = max(median_income))),
+    `% HS diploma or higher`     = list(c(N = sum(!is.na(hs_or_higher_pct)),
+                                          Mean = mean(hs_or_higher_pct),
+                                          SD = sd(hs_or_higher_pct),
+                                          Min = min(hs_or_higher_pct),
+                                          Median = median(hs_or_higher_pct),
+                                          Max = max(hs_or_higher_pct)))
+  ) |>
+  tidyr::pivot_longer(everything(), names_to = "Variable", values_to = "stats") |>
+  tidyr::unnest_wider(stats) |>
+  dplyr::mutate(
+    N      = format(N, big.mark = ","),
+    Mean   = ifelse(grepl("income", Variable),
+                    format(round(Mean, 0), big.mark = ","),
+                    sprintf("%.2f", Mean)),
+    SD     = ifelse(grepl("income", Variable),
+                    format(round(SD, 0), big.mark = ","),
+                    sprintf("%.2f", SD)),
+    Min    = ifelse(grepl("income", Variable),
+                    format(round(Min, 0), big.mark = ","),
+                    sprintf("%.2f", Min)),
+    Median = ifelse(grepl("income", Variable),
+                    format(round(Median, 0), big.mark = ","),
+                    sprintf("%.2f", Median)),
+    Max    = ifelse(grepl("income", Variable),
+                    format(round(Max, 0), big.mark = ","),
+                    sprintf("%.2f", Max))
+  ) |>
+  knitr::kable(align = c("l", "r", "r", "r", "r", "r", "r"))
+```
+
 ```{r fig-cov, fig.width=9, fig.height=6}
 merged |>
   select(poverty_pct, uninsured_pct, median_income, hs_or_higher_pct) |>
