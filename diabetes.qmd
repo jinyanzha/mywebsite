@@ -154,7 +154,7 @@ merged |>
   knitr::kable(digits = 1)
 ```
 
-**Interpretation.** The top-burden counties fall into three geographically distinct clusters: (i) Native American reservations in the **Northern Plains** (South Dakota's Oglala Lakota and Todd counties), (ii) predominantly Hispanic **border counties in South Texas** (Presidio, Zavala, Dimmit, Starr), and (iii) the **Mississippi Delta and Alabama Black Belt** (Holmes MS, East Carroll LA, Greene and Perry AL). All share extreme poverty rates (31–56%) and educational attainment well below the national median.
+**Interpretation.** The top-burden counties fall into three geographically distinct clusters: (i) Native American reservations in the **Northern Plains** (South Dakota's Oglala Lakota and Todd counties), (ii) predominantly Hispanic **border counties in South Texas** (Presidio, Zavala, Dimmit, Starr), and (iii) the **Mississippi Delta and Alabama Black Belt** (Holmes MS, East Carroll LA, Greene and Perry AL). All share extreme poverty rates (approximately 30–60%) and educational attainment well below the national median.
 
 ```{r bottom}
 #| tbl-cap: "Ten U.S. counties with the lowest age-adjusted diabetes prevalence."
@@ -169,7 +169,7 @@ merged |>
   knitr::kable(digits = 1)
 ```
 
-**Interpretation.** The lowest-burden counties are overwhelmingly **wealthy Mountain West resort and university counties** (Colorado's Douglas, Pitkin, Boulder; New Mexico's Los Alamos; Vermont's Chittenden) with poverty below 11% and near-universal high-school completion (> 95%). This striking contrast with the top-burden counties — a nearly four-fold difference in diabetes prevalence paired with an order-of-magnitude gap in poverty — motivates both the choropleth maps and the regression analysis that follow.
+**Interpretation.** The lowest-burden counties are overwhelmingly **wealthy Mountain West resort and university counties** (Colorado's Douglas, Pitkin, Boulder; New Mexico's Los Alamos; Vermont's Chittenden) with poverty rates around 3–11% and near-universal high-school completion (above 93%, most above 95%). This striking contrast with the top-burden counties — a nearly four-fold difference in diabetes prevalence paired with roughly a 20-fold gap in poverty rates — motivates both the choropleth maps and the regression analysis that follow.
 
 ## State-level overview map
 
@@ -382,7 +382,7 @@ ggplot(merged, aes(poverty_pct, diabetes)) +
   theme_minimal(base_size = 12)
 ```
 
-**Interpretation.** The unadjusted bivariate relationship is strongly linear across the full range of poverty (3%–56%), with remarkably tight scatter given that no other covariate is controlled. The slope is steep enough that the ten highest-poverty counties (> 40% poverty) have roughly *double* the diabetes prevalence of counties below 10% poverty. This panel provides an intuitive preview of the multivariate regression: poverty alone is a powerful predictor.
+**Interpretation.** The unadjusted bivariate relationship is strongly linear across the full range of poverty (roughly 1%–59%), with remarkably tight scatter given that no other covariate is controlled. The slope is steep enough that counties with more than 40% poverty have roughly *double* the mean diabetes prevalence (~18%) of counties below 10% poverty (~8.6%). This panel provides an intuitive preview of the multivariate regression: poverty alone is a powerful predictor.
 
 ## Spatial autocorrelation (Moran's I)
 
