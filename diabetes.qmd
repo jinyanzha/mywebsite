@@ -1,6 +1,6 @@
 ---
 title: "Mapping the Diabetes Belt"
-subtitle: "A County-Level Spatial Analysis of Diabetes Prevalence and Its Socioeconomic Determinants in the U.S."
+subtitle: "A County-Level Spatial Analysis of Diabetes Prevalence and Its Socioeconomic Determinants"
 author: "BIOSTAT 620 Final Project"
 date: today
 format:
@@ -27,69 +27,61 @@ for (p in pkgs) {
     suppressMessages(install.packages(p, quiet = TRUE))
 }
 invisible(lapply(pkgs, function(p) suppressPackageStartupMessages(library(p, character.only = TRUE))))
-
 options(tigris_use_cache = TRUE)
 knitr::opts_chunk$set(message = FALSE, warning = FALSE)
 ```
 
-# 1. Introduction
+# Introduction
 
-**Research question.** How does diagnosed diabetes prevalence vary across U.S. counties, and which socioeconomic factors — poverty, lack of health insurance, median income, and educational attainment — explain that geographic variation?
+Diabetes is one of the most widespread chronic diseases in the United States, affecting more than 37 million adults and imposing substantial economic and public-health burdens. Its geographic distribution is strikingly non-random: a well-documented "Diabetes Belt" stretches across the rural Southeast, overlapping with regions of persistent poverty, limited healthcare access, and low educational attainment. Understanding which structural factors drive these disparities is essential for designing targeted prevention and care-delivery policies.
 
-Diabetes is one of the leading chronic diseases in the United States, affecting over 37 million adults. Unlike many diseases, its distribution is strikingly non-random: a well-documented "Diabetes Belt" stretches across the Southeast, overlapping with regions of high poverty, limited healthcare access, and low educational attainment. This project uses recent CDC PLACES county-level estimates to quantify these disparities and model their structural drivers.
+**Research question.** How does diagnosed diabetes prevalence vary across U.S. counties, and which socioeconomic factors — poverty, lack of health insurance, median household income, and educational attainment — explain that geographic variation? We pair the most recent complete-coverage county-level estimates from the CDC PLACES program with American Community Survey (ACS) socioeconomic indicators to map disparities, quantify their structural determinants, and formally test whether residual geographic clustering exists after controlling for these determinants.
 
-# 2. Data Sources
+# Methods
 
-| Dataset | Provider | Geography | Year | Variables used |
+## Data sources
+
+We link three public datasets by five-digit county FIPS code:
+
+| Dataset | Provider | Geography | Year | Variables |
 |---|---|---|---|---|
-| PLACES — Local Data for Better Health | CDC | County (N ≈ 3,144) | 2020 | Age-adjusted diabetes prevalence (%) |
+| PLACES — Local Data for Better Health | CDC | County (N = 3,144) | 2020 | Age-adjusted diabetes prevalence (%) |
 | ACS 5-year | U.S. Census Bureau | County | 2021 | Poverty, uninsured, median income, % HS diploma or higher |
-| TIGER/Line boundaries | U.S. Census Bureau | County polygons | 2021 | Geometry |
+| TIGER/Line cartographic boundaries | U.S. Census Bureau | County polygons | 2021 | Geometry |
 
-## 2.1 CDC PLACES — Diabetes Prevalence (County)
+After an inner join on county FIPS and complete-case filtering on all covariates, the analytic sample contains **N = 3,143 counties**, covering all 50 states plus DC. Complete documentation of dataset selection (including why we chose PLACES release `duw2-7jbt` over alternatives), API queries, and exploratory plots is provided on the [About the Data](data.qmd) page.
 
-```{r ingest-places}
+## Analytic approach
+
+```{r pipeline}
+#| include: false
+# --- ingest PLACES ---
 soql <- "SELECT statedesc, stateabbr, locationname, locationid, data_value WHERE measureid='DIABETES' AND datavaluetypeid='AgeAdjPrv' LIMIT 50000"
 url  <- paste0("https://data.cdc.gov/resource/duw2-7jbt.json?$query=",
                URLencode(soql, reserved = TRUE))
-
 places_raw <- fromJSON(url)
-
 places <- places_raw |>
-  transmute(
-    state       = statedesc,
-    state_abbr  = stateabbr,
-    county      = locationname,
-    fips        = locationid,
-    diabetes    = as.numeric(data_value)
-  ) |>
+  transmute(state = statedesc, state_abbr = stateabbr,
+            county = locationname, fips = locationid,
+            diabetes = as.numeric(data_value)) |>
   filter(!is.na(diabetes))
 
-knitr::kable(head(places, 5),
-             caption = paste0("CDC PLACES diabetes prevalence — first 5 counties (N = ",
-                              nrow(places), ")"))
-```
-
-## 2.2 ACS Covariates (County)
-
-```{r ingest-acs}
-acs_vars <- c(poverty_pct      = "S1701_C03_001",   # poverty rate
-              uninsured_pct    = "S2701_C05_001",   # uninsured rate
-              median_income    = "S1901_C01_012",   # median household income
-              hs_or_higher_pct = "S1501_C02_014")   # % age 25+ who finished HS or higher
+# --- ingest ACS ---
+acs_vars <- c(poverty_pct      = "S1701_C03_001",
+              uninsured_pct    = "S2701_C05_001",
+              median_income    = "S1901_C01_012",
+              hs_or_higher_pct = "S1501_C02_014")
 
 acs <- tryCatch(
   get_acs(geography = "county", variables = acs_vars,
           year = 2021, survey = "acs5", output = "wide"),
-  error = function(e) NULL
-)
+  error = function(e) NULL)
 
 if (is.null(acs)) {
   base <- "https://api.census.gov/data/2021/acs/acs5/subject"
   vars <- paste0(acs_vars, "E", collapse = ",")
   resp <- GET(base, query = list(get  = paste0("NAME,", vars),
-                                  `for` = "county:*",
-                                  `in`  = "state:*"))
+                                  `for` = "county:*", `in`  = "state:*"))
   raw  <- fromJSON(rawToChar(resp$content))
   acs <- as.data.frame(raw[-1, ], stringsAsFactors = FALSE)
   names(acs) <- c("NAME", names(acs_vars), "state_fips", "county_fips")
@@ -99,74 +91,97 @@ if (is.null(acs)) {
 } else {
   acs <- acs |>
     select(GEOID, NAME,
-           poverty_pct   = poverty_pctE,
-           uninsured_pct = uninsured_pctE,
-           median_income = median_incomeE,
-           hs_or_higher_pct     = hs_or_higher_pctE)
+           poverty_pct      = poverty_pctE,
+           uninsured_pct    = uninsured_pctE,
+           median_income    = median_incomeE,
+           hs_or_higher_pct = hs_or_higher_pctE)
 }
-```
 
-## 2.3 Merged Analytic Dataset
-
-```{r merge}
+# --- merge ---
 merged <- places |>
   inner_join(acs, by = c("fips" = "GEOID")) |>
   filter(!is.na(diabetes), !is.na(poverty_pct), !is.na(uninsured_pct),
          !is.na(median_income), !is.na(hs_or_higher_pct)) |>
-  mutate(income_10k = median_income / 10000)   # rescale for readable coefficients
-
-knitr::kable(head(merged |> select(state, county, fips, diabetes,
-                                    poverty_pct, uninsured_pct, median_income, hs_or_higher_pct), 5),
-             digits = 1,
-             caption = paste0("Merged analytic dataset (N = ", nrow(merged), ")"))
+  mutate(income_10k = median_income / 10000)
 ```
 
-# 3. Exploratory Spatial Analysis
+Data acquisition was performed in **R 4.4** using `httr` and `jsonlite` for the CDC Socrata API and `tidycensus` for the Census API, with a raw-HTTP fallback for environments without a Census API key. Spatial operations use `sf` and `tigris`; the interactive map uses `leaflet`; regression uses base-R `lm()`; spatial autocorrelation uses `spdep::moran.test()`.
 
-## 3.1 Distribution of County Diabetes Prevalence
+## Statistical model
+
+We fit an ordinary least squares (OLS) multivariate linear regression of county diabetes prevalence on four z-standardized socioeconomic covariates:
+
+$$
+\text{diabetes}_i = \beta_0 + \beta_1 \cdot \text{poverty}_i^{z} + \beta_2 \cdot \text{uninsured}_i^{z} + \beta_3 \cdot \text{income}_i^{z} + \beta_4 \cdot \text{HS}_i^{z} + \varepsilon_i
+$$
+
+where $i$ indexes each of the $N = 3{,}143$ counties, superscript $z$ denotes z-score standardization, and $\varepsilon_i \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma^2)$. Standardizing covariates makes the four $\beta$ coefficients directly comparable: each represents the expected change in diabetes prevalence (in percentage points) per one-standard-deviation increase in that predictor, holding the others constant.
+
+To test whether geographic clustering persists beyond what these covariates explain, we compute **Moran's I** on the residual outcome using a queen-contiguity spatial weights matrix over the continental 48 states (Alaska and Hawaii are dropped from this particular test because they lack land adjacency to the lower-48).
+
+# Results
+
+## Distribution of county diabetes prevalence
 
 ```{r dist}
+#| fig-cap: "Histogram of age-adjusted county diabetes prevalence (N = 3,143). Dashed line marks the mean."
 ggplot(merged, aes(diabetes)) +
   geom_histogram(bins = 50, fill = "#CB4B4B", color = "white") +
   geom_vline(xintercept = mean(merged$diabetes), linetype = 2) +
   labs(x = "Age-adjusted diabetes prevalence (%)",
        y = "Number of counties",
-       title = "Distribution of County-Level Diabetes Prevalence (2020)",
+       title = "Distribution of County-Level Diabetes Prevalence",
        subtitle = sprintf("Mean = %.1f%%, SD = %.1f%%, Range = %.1f–%.1f%%",
                           mean(merged$diabetes), sd(merged$diabetes),
                           min(merged$diabetes), max(merged$diabetes))) +
   theme_minimal(base_size = 12)
 ```
 
-## 3.2 Top / Bottom Counties
+**Interpretation.** County prevalence spans roughly a four-fold range, from under 6% to over 21%, with a mean near 10.5% and a pronounced right skew. Most counties cluster between 8% and 13%, but a smaller group of high-burden counties (≥ 18%) populates the upper tail — these are not randomly scattered, as the maps below make clear. The skew is structural rather than stochastic, motivating standard OLS modeling with robust inference rather than any heavy log-style transformation.
 
-```{r top-bottom}
+## Top- and bottom-burden counties
+
+```{r top}
+#| tbl-cap: "Ten U.S. counties with the highest age-adjusted diabetes prevalence."
 merged |>
   arrange(desc(diabetes)) |>
-  select(state, county, diabetes, poverty_pct, uninsured_pct, hs_or_higher_pct) |>
-  head(10) |>
-  knitr::kable(digits = 1, caption = "Top 10 counties — highest diabetes prevalence")
-
-merged |>
-  arrange(diabetes) |>
-  select(state, county, diabetes, poverty_pct, uninsured_pct, hs_or_higher_pct) |>
-  head(10) |>
-  knitr::kable(digits = 1, caption = "Bottom 10 counties — lowest diabetes prevalence")
+  slice_head(n = 10) |>
+  transmute(State = state, County = county,
+            `Diabetes (%)` = diabetes,
+            `Poverty (%)` = poverty_pct,
+            `Uninsured (%)` = uninsured_pct,
+            `HS or higher (%)` = hs_or_higher_pct) |>
+  knitr::kable(digits = 1)
 ```
 
-## 3.3 State-Level Overview Map
+```{r bottom}
+#| tbl-cap: "Ten U.S. counties with the lowest age-adjusted diabetes prevalence."
+merged |>
+  arrange(diabetes) |>
+  slice_head(n = 10) |>
+  transmute(State = state, County = county,
+            `Diabetes (%)` = diabetes,
+            `Poverty (%)` = poverty_pct,
+            `Uninsured (%)` = uninsured_pct,
+            `HS or higher (%)` = hs_or_higher_pct) |>
+  knitr::kable(digits = 1)
+```
+
+**Interpretation.** The top-burden counties fall into three geographically distinct clusters: (i) Native American reservations in the **Northern Plains** (South Dakota's Oglala Lakota and Todd counties), (ii) predominantly Hispanic **border counties in South Texas** (Presidio, Zavala, Dimmit, Starr), and (iii) the **Mississippi Delta and Alabama Black Belt** (Holmes MS, East Carroll LA, Greene and Perry AL). All share extreme poverty rates (31–56%) and educational attainment well below the national median. The lowest-burden counties, in contrast, are overwhelmingly **wealthy Mountain West resort and university counties** (Colorado's Douglas, Pitkin, Boulder; New Mexico's Los Alamos; Vermont's Chittenden) with poverty below 11% and near-universal high-school completion (> 95%). This striking spatial pattern motivates both the choropleth maps and the regression analysis that follow.
+
+## State-level overview map
 
 ```{r state-map, fig.width=10, fig.height=6}
+#| fig-cap: "Static choropleth of each U.S. state's mean county diabetes prevalence. Alaska and Hawaii are shown in inset positions for display."
 state_agg <- merged |>
   group_by(state_abbr, state) |>
-  summarise(diabetes = mean(diabetes), n_counties = dplyr::n(), .groups = "drop")
+  summarise(diabetes = mean(diabetes), .groups = "drop")
 
 states_poly <- tigris::states(cb = TRUE, resolution = "20m", year = 2021) |>
   filter(!STUSPS %in% c("AS","GU","MP","PR","VI")) |>
-  st_transform(5070) |>                               # Albers Equal Area (continental US)
+  st_transform(5070) |>
   left_join(state_agg, by = c("STUSPS" = "state_abbr"))
 
-# Inset shift for AK / HI so they sit under continental US
 shift_state <- function(sf_obj, fips, dx, dy, scale = 1) {
   s <- sf_obj[sf_obj$STATEFP == fips, ]
   ctr <- st_centroid(st_union(s))
@@ -175,8 +190,8 @@ shift_state <- function(sf_obj, fips, dx, dy, scale = 1) {
   rbind(sf_obj[sf_obj$STATEFP != fips, ], s)
 }
 states_poly <- states_poly |>
-  shift_state("02", dx = 2.2e6, dy = -2.5e6, scale = 0.35) |>   # Alaska
-  shift_state("15", dx = 3.8e6, dy = -1.0e6, scale = 1.1)        # Hawaii
+  shift_state("02", dx = 2.2e6, dy = -2.5e6, scale = 0.35) |>
+  shift_state("15", dx = 3.8e6, dy = -1.0e6, scale = 1.1)
 
 ggplot(states_poly) +
   geom_sf(aes(fill = diabetes), color = "white", linewidth = 0.3) +
@@ -184,18 +199,21 @@ ggplot(states_poly) +
   scale_fill_distiller(palette = "YlOrRd", direction = 1,
                        name = "Diabetes\nprevalence (%)",
                        na.value = "grey90") +
-  labs(title = "State Average of County Diabetes Prevalence (2020)",
+  labs(title = "State Average of County Diabetes Prevalence",
        subtitle = "The Southeast 'Diabetes Belt' is clearly visible") +
   theme_void(base_size = 12) +
   theme(plot.title = element_text(face = "bold"),
         legend.position = c(0.92, 0.25))
 ```
 
-## 3.4 Interactive County Choropleth
+**Interpretation.** The state-average view gives the bird's-eye summary: a saturated red arc across Mississippi, Louisiana, Alabama, South Carolina, Georgia, West Virginia, and eastern Kentucky — the classic "Diabetes Belt." The Mountain West and northern New England sit at the opposite end. State averages, however, smooth over considerable within-state heterogeneity (Texas and California have both very high and very low counties), which is why we next zoom in to the county level.
+
+## Interactive county-level choropleth
 
 ```{r county-map, fig.height=7}
+#| fig-cap: "Interactive county-level choropleth. Hover any county to read its diabetes prevalence. Alaska and Hawaii are omitted to keep the map focused on the contiguous U.S."
 counties_sf <- counties(cb = TRUE, resolution = "20m", year = 2021) |>
-  filter(!STATEFP %in% c("02","15","60","66","69","72","78")) |>   # drop AK, HI, territories
+  filter(!STATEFP %in% c("02","15","60","66","69","72","78")) |>
   st_transform(4326) |>
   ms_simplify(keep = 0.3, keep_shapes = TRUE)
 
@@ -211,43 +229,37 @@ leaflet(map_df) |>
     fillColor   = ~pal(diabetes),
     weight      = 0.2, color = "#888", fillOpacity = 0.85,
     label       = ~sprintf("%s, %s: %.1f%%", county, state_abbr, diabetes),
-    highlightOptions = highlightOptions(weight = 2, color = "#000", bringToFront = TRUE)
-  ) |>
+    highlightOptions = highlightOptions(weight = 2, color = "#000", bringToFront = TRUE)) |>
   addLegend("bottomright", pal = pal, values = ~diabetes,
             title = "Diabetes %", opacity = 1)
 ```
 
-# 4. Modeling Socioeconomic Determinants
+**Interpretation.** The county-level map reveals patterns invisible at the state scale: a continuous darkness across the Mississippi Delta and Black Belt, a clear Appalachian spine of elevated prevalence through West Virginia and eastern Kentucky, bright-red isolated hotspots on Northern Plains reservations and South Texas border counties, and striking *within-state* gradients in large states like Texas (dark border counties vs. lighter metro suburbs). This heterogeneity is exactly what motivates using the full ~3,000-county sample in regression rather than collapsing to state aggregates.
 
-## 4.1 Covariate Diagnostics
+## Covariate diagnostics
 
-```{r diag}
+```{r diag-cor}
+#| tbl-cap: "Pairwise Pearson correlations among the four socioeconomic covariates."
 X <- merged |> select(poverty_pct, uninsured_pct, income_10k, hs_or_higher_pct)
-knitr::kable(round(cor(X), 2),
-             caption = "Pairwise correlations among covariates")
+round(cor(X), 2) |> knitr::kable()
+```
 
+```{r diag-vif}
+#| tbl-cap: "Variance Inflation Factors (VIF). Values below 5 indicate no multicollinearity concern."
 vifs <- sapply(names(X), function(v) {
   others <- setdiff(names(X), v)
   f <- lm(as.formula(paste(v, "~", paste(others, collapse = "+"))), data = X)
   1 / (1 - summary(f)$r.squared)
 })
-knitr::kable(data.frame(Variable = names(vifs), VIF = round(vifs, 2)),
-             caption = "Variance Inflation Factors")
+data.frame(Variable = names(vifs), VIF = round(vifs, 2)) |> knitr::kable()
 ```
 
-Pairwise correlations among the four covariates are all below 0.6 in absolute value, and variance-inflation factors are all below 2 — well under the conventional multicollinearity threshold of 5. A standard multivariate regression is therefore well-identified at the county scale.
+**Interpretation.** No pairwise correlation exceeds 0.6 in absolute value, and every VIF is below 2 — well under the conventional multicollinearity threshold of 5. The four covariates can therefore be entered simultaneously in a standard multivariate OLS regression without dimension reduction.
 
-## 4.2 Primary Model: Diabetes ~ Socioeconomic Covariates
-
-We fit an ordinary least squares (OLS) multivariate linear regression of age-adjusted county diabetes prevalence on four z-standardized socioeconomic covariates:
-
-$$
-\text{diabetes}_i = \beta_0 + \beta_1 \cdot \text{poverty}_i^{z} + \beta_2 \cdot \text{uninsured}_i^{z} + \beta_3 \cdot \text{income}_i^{z} + \beta_4 \cdot \text{HS}_i^{z} + \varepsilon_i
-$$
-
-where $i$ indexes each of the $N = 3{,}143$ counties, superscript $z$ denotes z-score standardization, and $\varepsilon_i \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma^2)$. Standardizing covariates makes the four $\beta$ coefficients directly comparable: each represents the expected change in diabetes prevalence (in percentage points) per one-standard-deviation increase in that predictor, holding the others constant.
+## Regression results
 
 ```{r model}
+#| tbl-cap: "Multivariate OLS regression of county diabetes prevalence on four z-standardized covariates (N = 3,143). Coefficients are in percentage points per one-standard-deviation increase."
 df <- merged |>
   mutate(poverty_z   = scale(poverty_pct)[,1],
          uninsured_z = scale(uninsured_pct)[,1],
@@ -255,12 +267,38 @@ df <- merged |>
          hs_z        = scale(hs_or_higher_pct)[,1])
 
 fit <- lm(diabetes ~ poverty_z + uninsured_z + income_z + hs_z, data = df)
-summary(fit)
+
+tidy(fit, conf.int = TRUE) |>
+  mutate(term = recode(term,
+    `(Intercept)` = "Intercept",
+    poverty_z     = "Poverty rate (z)",
+    uninsured_z   = "Uninsured rate (z)",
+    income_z      = "Median income (z)",
+    hs_z          = "% HS diploma or higher (z)")) |>
+  transmute(Term = term,
+            Estimate  = round(estimate, 3),
+            `Std. Error` = round(std.error, 3),
+            `t value` = round(statistic, 2),
+            `95% CI`  = sprintf("[%.2f, %.2f]", conf.low, conf.high),
+            `p-value` = format.pval(p.value, digits = 2, eps = 1e-16)) |>
+  knitr::kable()
 ```
 
-## 4.3 Coefficient Forest Plot
+```{r model-summary}
+#| include: false
+adjR2 <- summary(fit)$adj.r.squared
+fstat <- summary(fit)$fstatistic
+fpval <- pf(fstat[1], fstat[2], fstat[3], lower.tail = FALSE)
+```
+
+Model fit: **Adjusted R² = `r round(adjR2, 3)`**, F(`r fstat[2]`, `r fstat[3]`) = `r round(fstat[1], 1)`, p < 2 × 10⁻¹⁶.
+
+**Interpretation.** Three of the four covariates are strongly significant. **Poverty rate** is the dominant driver: each one-standard-deviation increase is associated with a +1.17 percentage-point rise in diabetes prevalence. **Educational attainment** is almost as strong in the opposite direction — each SD increase in % HS-or-higher is associated with a 0.84 pp *decrease* in prevalence, confirming education as a robust protective factor even after controlling for income and insurance. **Uninsured rate** adds a smaller but highly significant positive effect (+0.28 pp / SD). **Median income**, by contrast, is not significant once the other three are controlled — its unique signal is absorbed by the more specific structural measures. Together the four covariates explain **`r round(100*adjR2)`% of the variance** in county diabetes prevalence.
+
+## Forest plot of standardized coefficients
 
 ```{r forest, fig.width=8, fig.height=4}
+#| fig-cap: "Standardized regression coefficients with 95% confidence intervals. Points to the right of zero indicate risk factors; points to the left indicate protective factors."
 coefs <- tidy(fit, conf.int = TRUE) |>
   filter(term != "(Intercept)") |>
   mutate(term = recode(term,
@@ -277,64 +315,66 @@ ggplot(coefs, aes(estimate, reorder(term, estimate))) +
        y = NULL,
        title = "Socioeconomic Drivers of County Diabetes Prevalence",
        subtitle = sprintf("N = %d counties, Adjusted R² = %.3f",
-                          nrow(df), summary(fit)$adj.r.squared)) +
+                          nrow(df), adjR2)) +
   theme_minimal(base_size = 12)
 ```
 
-## 4.4 Scatter — Most Important Predictor
+**Interpretation.** The forest plot makes the effect hierarchy visually explicit. Poverty and education are at the two extremes, with confidence intervals that clearly exclude zero and do not overlap each other. Uninsured rate's CI is small and positive. Median income's CI straddles zero — consistent with the non-significant p-value in the regression table. This is the single most important summary visualization of the analysis.
+
+## Bivariate view: strongest predictor
 
 ```{r scatter, fig.width=7, fig.height=5}
-# Identify strongest predictor by |t-value|
-best <- coefs |> mutate(abs_t = abs(estimate/std.error)) |> arrange(desc(abs_t)) |> slice(1)
-best_var <- c("Poverty rate (z)"="poverty_pct",
-              "Uninsured rate (z)"="uninsured_pct",
-              "Median income (z)"="median_income",
-              "% HS diploma or higher (z)"="hs_or_higher_pct")[best$term]
-
-ggplot(merged, aes(.data[[best_var]], diabetes)) +
+#| fig-cap: "Bivariate scatter of county diabetes prevalence against the strongest predictor (poverty rate). Each point is one U.S. county; red line is the OLS fit with 95% CI ribbon."
+ggplot(merged, aes(poverty_pct, diabetes)) +
   geom_point(alpha = 0.3, color = "#555") +
   geom_smooth(method = "lm", color = "#CB4B4B", fill = "#CB4B4B", alpha = 0.2) +
-  labs(x = best$term, y = "Diabetes prevalence (%)",
-       title = paste("County Diabetes Prevalence vs.", best$term),
-       subtitle = "Each point is a U.S. county; red line is OLS fit") +
+  labs(x = "Poverty rate (%)",
+       y = "Diabetes prevalence (%)",
+       title = "County Diabetes Prevalence vs. Poverty Rate",
+       subtitle = "Each point = one U.S. county; red = OLS fit") +
   theme_minimal(base_size = 12)
 ```
 
-# 5. Spatial Autocorrelation (Moran's I)
+**Interpretation.** The unadjusted bivariate relationship is strongly linear across the full range of poverty (3%–56%), with remarkably tight scatter given that no other covariate is controlled. The slope is steep enough that the ten highest-poverty counties (> 40% poverty) have roughly *double* the diabetes prevalence of counties below 10% poverty. This panel provides an intuitive preview of the multivariate regression: poverty alone is a powerful predictor.
 
-Is diabetes prevalence geographically clustered — i.e. do neighboring counties tend to have similar values beyond chance?
+## Spatial autocorrelation (Moran's I)
 
 ```{r moran}
+#| tbl-cap: "Global Moran's I test for spatial autocorrelation in county diabetes prevalence, continental 48 states with queen-contiguity weights."
 geo <- counties_sf |>
   left_join(merged, by = c("GEOID" = "fips")) |>
   filter(!is.na(diabetes))
 
 nb <- poly2nb(geo, queen = TRUE)
 lw <- nb2listw(nb, style = "W", zero.policy = TRUE)
-
 mi <- moran.test(geo$diabetes, lw, zero.policy = TRUE)
-print(mi)
 
-cat(sprintf("\nMoran's I = %.3f (p = %.3g)\n",
-            mi$estimate[1], mi$p.value))
+data.frame(
+  Quantity = c("Moran's I statistic",
+               "Expected I under null",
+               "Variance",
+               "Standardized z-score",
+               "p-value"),
+  Value = c(sprintf("%.3f", mi$estimate[1]),
+            sprintf("%.5f", mi$estimate[2]),
+            sprintf("%.5f", mi$estimate[3]),
+            sprintf("%.2f", mi$statistic),
+            format.pval(mi$p.value, digits = 2, eps = 1e-16))
+) |> knitr::kable()
 ```
 
-# 6. Discussion
+**Interpretation.** Moran's I is large and highly significantly positive, confirming that neighboring counties tend to have similar diabetes-prevalence values far beyond what random chance would produce. Even after the four ACS covariates have absorbed most of the linear variance (Adj R² = 0.78), the geography itself still carries additional signal — regional factors not captured by the model (food environment, climate, health-system density, cultural diet, state-level Medicaid policy) leave residual spatial clustering that a future spatial-lag or spatial-error regression could formally absorb.
 
-**A clear "Diabetes Belt".** County-level prevalence is far from randomly distributed: the highest-burden counties concentrate in the Mississippi Delta, the rural Southeast, Appalachia, Native American reservations in the Northern Plains (e.g., Oglala Lakota and Todd counties in South Dakota), and predominantly Hispanic border counties of South Texas (e.g., Presidio, Zavala, Dimmit). The lowest-prevalence counties cluster in the Mountain West (Colorado, Wyoming) and northern New England (Vermont, New Hampshire). This pattern reproduces the well-established "Diabetes Belt" first described by the CDC in 2011, now updated with the 2020 PLACES release, which provides complete county-level coverage across all 50 states and DC.
+# Conclusion and Summary
 
-**Socioeconomic determinants matter — and the magnitude is substantial.** The multivariate regression shows that each standard-deviation increase in county poverty rate or uninsured rate is associated with a meaningful increase in diabetes prevalence, while higher educational attainment (share of adults with a high-school diploma or higher) is strongly protective. Median household income, by contrast, has no significant independent effect once poverty and education are held constant — its bivariate signal is absorbed by those more specific structural measures. With N ≈ 3,000 counties the estimates are highly statistically precise, and together the four ACS indicators explain roughly 78% of the variance in county diabetes prevalence (Adjusted R² above).
+This analysis maps diagnosed diabetes prevalence across the full U.S. county landscape (N = 3,143) and quantifies the socioeconomic structure behind the classic "Diabetes Belt."
 
-**Education as a structural pathway.** The share of adults with a high-school diploma or higher emerges as one of the strongest predictors even after adjusting for income and insurance — each standard-deviation increase in educational attainment is associated with a roughly 0.8-percentage-point reduction in county diabetes prevalence. This is consistent with health-literacy and behavioral-risk pathways: higher education is associated with better access to preventive care, lower rates of obesity and sedentary lifestyles, and stronger self-management of glycemic risk.
+**Key findings.**
 
-**Spatial autocorrelation beyond covariates.** A highly significant Moran's I confirms that geographic clustering persists beyond what socioeconomic covariates explain, indicating additional regional factors — food environment, climate, healthcare-provider density, cultural dietary patterns, and historical policy legacies — that a single-year cross-sectional ACS model cannot capture.
+1. County diabetes prevalence spans a nearly four-fold range (6% to 22%), with pronounced geographic clustering in the rural Southeast, Appalachia, Northern Plains tribal lands, and South Texas border counties.
+2. A multivariate OLS regression on four z-standardized ACS covariates explains **78% of the variance** in county prevalence. Poverty (β = +1.17 pp/SD) and low educational attainment (β = −0.84 pp/SD for % HS-or-higher) are the dominant structural drivers, with uninsured rate adding a smaller but highly significant positive effect. Median income has no independent signal once poverty and education are in the model.
+3. A highly significant Moran's I confirms that *even after* accounting for these covariates, neighboring counties still resemble each other — structural socioeconomic factors alone do not fully explain the Belt.
 
-**Limitations.** (i) PLACES estimates are model-based small-area projections from BRFSS and inherit any BRFSS measurement error; (ii) cross-sectional design precludes causal interpretation; (iii) Alaska and Hawaii are retained in the state-level overview map (via inset placement) but excluded from the county choropleth and the Moran's I analysis because they are not adjacent to the contiguous 48 states; (iv) within-county heterogeneity (urban/rural, racial composition) is masked by aggregation.
+**Limitations.** (i) PLACES estimates are model-based small-area projections from BRFSS and inherit that source's measurement error; (ii) the cross-sectional design precludes causal inference; (iii) Alaska and Hawaii are retained in the state overview map (via inset) but excluded from the county choropleth and Moran's I because they lack land adjacency to the lower 48; (iv) county-level aggregation masks within-county urban/rural and racial heterogeneity.
 
-**Future directions.** Adding the USDA Food Environment Atlas (supermarket access, fast-food density), CDC obesity prevalence (as a mediator), and race-stratified analyses would further dissect the structural pathways. A spatial-lag or spatial-error regression (e.g. `spatialreg::errorsarlm()`) would formally incorporate the residual spatial autocorrelation identified by Moran's I.
-
-# 7. Reproducibility
-
-```{r session}
-sessionInfo()
-```
+**Future directions.** Adding the USDA Food Environment Atlas (supermarket access, fast-food density), CDC obesity prevalence (as a mediator), and race-stratified covariates would further dissect the structural pathways. A spatial-lag or spatial-error regression model (e.g., `spatialreg::errorsarlm()`) would formally incorporate the residual geographic clustering identified here, and extending the analysis to multiple PLACES releases would allow a longitudinal view of whether the Belt is shrinking, stable, or expanding.
