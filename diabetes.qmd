@@ -21,7 +21,7 @@ execute:
 Sys.setenv(LANGUAGE = "en")
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 pkgs <- c("httr","jsonlite","dplyr","tidyr","ggplot2","sf","tigris","leaflet",
-          "tidycensus","broom","spdep","knitr","RColorBrewer","rmapshaper")
+          "leaflet.extras","tidycensus","broom","spdep","knitr","RColorBrewer","rmapshaper")
 for (p in pkgs) {
   if (!requireNamespace(p, quietly = TRUE))
     suppressMessages(install.packages(p, quiet = TRUE))
@@ -222,16 +222,28 @@ map_df <- counties_sf |>
 
 pal <- colorNumeric("YlOrRd", map_df$diabetes, na.color = "#eeeeee")
 
+map_df$search_label <- sprintf("%s, %s", map_df$county, map_df$state_abbr)
+
 leaflet(map_df) |>
   addProviderTiles(providers$CartoDB.Positron) |>
   setView(-96, 38, zoom = 4) |>
   addPolygons(
+    group       = "counties",
     fillColor   = ~pal(diabetes),
     weight      = 0.2, color = "#888", fillOpacity = 0.85,
     label       = ~sprintf("%s, %s: %.1f%%", county, state_abbr, diabetes),
+    popup       = ~sprintf("<b>%s, %s</b><br/>Diabetes: %.1f%%<br/>Poverty: %.1f%%<br/>Uninsured: %.1f%%<br/>HS or higher: %.1f%%",
+                           county, state_abbr, diabetes, poverty_pct, uninsured_pct, hs_or_higher_pct),
     highlightOptions = highlightOptions(weight = 2, color = "#000", bringToFront = TRUE)) |>
   addLegend("bottomright", pal = pal, values = ~diabetes,
-            title = "Diabetes %", opacity = 1)
+            title = "Diabetes %", opacity = 1) |>
+  addSearchFeatures(
+    targetGroups = "counties",
+    options = searchFeaturesOptions(
+      zoom        = 10,
+      openPopup   = TRUE,
+      propertyName = "label",
+      textPlaceholder = "Search county (e.g. Cook, IL)"))
 ```
 
 **Interpretation.** The county-level map reveals patterns invisible at the state scale: a continuous darkness across the Mississippi Delta and Black Belt, a clear Appalachian spine of elevated prevalence through West Virginia and eastern Kentucky, bright-red isolated hotspots on Northern Plains reservations and South Texas border counties, and striking *within-state* gradients in large states like Texas (dark border counties vs. lighter metro suburbs). This heterogeneity is exactly what motivates using the full ~3,000-county sample in regression rather than collapsing to state aggregates.
