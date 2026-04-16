@@ -340,7 +340,7 @@ fpval <- pf(fstat[1], fstat[2], fstat[3], lower.tail = FALSE)
 
 Model fit: **Adjusted R² = `r round(adjR2, 3)`**, F(`r fstat[2]`, `r fstat[3]`) = `r round(fstat[1], 1)`, p < 2 × 10⁻¹⁶.
 
-**Interpretation.** Three of the four covariates are strongly significant. **Poverty rate** is the dominant driver: each one-standard-deviation increase is associated with a +1.17 percentage-point rise in diabetes prevalence. **Educational attainment** is almost as strong in the opposite direction — each SD increase in % HS-or-higher is associated with a 0.84 pp *decrease* in prevalence, confirming education as a robust protective factor even after controlling for income and insurance. **Uninsured rate** adds a smaller but highly significant positive effect (+0.28 pp / SD). **Median income**, by contrast, is not significant once the other three are controlled — its unique signal is absorbed by the more specific structural measures. Together the four covariates explain **`r round(100*adjR2)`% of the variance** in county diabetes prevalence.
+**Interpretation.** All four covariates are statistically significant, but they differ dramatically in effect size. **Poverty rate** is the dominant driver: each one-standard-deviation increase is associated with a +1.13 percentage-point rise in diabetes prevalence. **Educational attainment** is almost as strong in the opposite direction — each SD increase in % HS-or-higher is associated with a 0.83 pp *decrease* in prevalence, confirming education as a robust protective factor even after controlling for income and insurance. **Uninsured rate** adds a smaller but highly significant positive effect (+0.28 pp / SD). **Median income**, interestingly, carries only a very small residual effect (−0.06 pp / SD, p = 0.025) once poverty and education are in the model — statistically detectable but practically negligible, because its structural signal is largely absorbed by the other two. Together the four covariates explain **`r round(100*adjR2)`% of the variance** in county diabetes prevalence.
 
 ## Forest plot of standardized coefficients
 
@@ -366,7 +366,7 @@ ggplot(coefs, aes(estimate, reorder(term, estimate))) +
   theme_minimal(base_size = 12)
 ```
 
-**Interpretation.** The forest plot makes the effect hierarchy visually explicit. Poverty and education are at the two extremes, with confidence intervals that clearly exclude zero and do not overlap each other. Uninsured rate's CI is small and positive. Median income's CI straddles zero — consistent with the non-significant p-value in the regression table. This is the single most important summary visualization of the analysis.
+**Interpretation.** The forest plot makes the effect hierarchy visually explicit. Poverty and education are at the two extremes, with confidence intervals that clearly exclude zero and do not overlap each other — they are the dominant risk and protective factors respectively. Uninsured rate sits in the middle with a small but firmly positive CI. Median income's CI barely excludes zero on the negative side — it is statistically significant but practically negligible. This is the single most important summary visualization of the analysis.
 
 ## Bivariate view: strongest predictor
 
@@ -419,7 +419,7 @@ This analysis maps diagnosed diabetes prevalence across the full U.S. county lan
 **Key findings.**
 
 1. County diabetes prevalence spans a nearly four-fold range (6% to 22%), with pronounced geographic clustering in the rural Southeast, Appalachia, Northern Plains tribal lands, and South Texas border counties.
-2. A multivariate OLS regression on four z-standardized ACS covariates explains **78% of the variance** in county prevalence. Poverty (β = +1.17 pp/SD) and low educational attainment (β = −0.84 pp/SD for % HS-or-higher) are the dominant structural drivers, with uninsured rate adding a smaller but highly significant positive effect. Median income has no independent signal once poverty and education are in the model.
+2. A multivariate OLS regression on four z-standardized ACS covariates explains **78% of the variance** in county prevalence. Poverty (β = +1.13 pp/SD) and low educational attainment (β = −0.83 pp/SD for % HS-or-higher) are the dominant structural drivers, with uninsured rate adding a smaller but highly significant positive effect (β = +0.28 pp/SD). Median income carries only a very small residual effect once the other three are controlled — its structural signal is largely absorbed by poverty and education.
 3. A highly significant Moran's I confirms that *even after* accounting for these covariates, neighboring counties still resemble each other — structural socioeconomic factors alone do not fully explain the Belt.
 
 **Limitations.** (i) PLACES estimates are model-based small-area projections from BRFSS and inherit that source's measurement error; (ii) the cross-sectional design precludes causal inference; (iii) Alaska and Hawaii are retained in the state overview map (via inset) but excluded from the county choropleth and Moran's I because they lack land adjacency to the lower 48; (iv) county-level aggregation masks within-county urban/rural and racial heterogeneity.
