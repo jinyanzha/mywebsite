@@ -179,7 +179,7 @@ ggplot(merged, aes(diabetes)) +
   theme_minimal(base_size = 12)
 ```
 
-The distribution is right-skewed with a long upper tail of high-prevalence counties (> 18%) concentrated in the rural South, Appalachia, and Native American tribal lands.
+**Interpretation.** The distribution is right-skewed with a long upper tail of high-prevalence counties. Most counties cluster between 8% and 13%, but a small group exceeds 18% — these are concentrated in the rural South (Mississippi Delta, Alabama Black Belt), Appalachia, and Native American tribal lands. The 5.6%–21.5% range (nearly a 4-fold spread) signals that geographic disparities are substantial and warrant covariate modeling. The right skew also motivates using ordinary least squares with robust inference rather than a heavy transformation, since the tail is structural (specific high-burden regions), not statistical noise.
 
 ## 4.2 Covariate Distributions
 
@@ -201,6 +201,8 @@ merged |>
   theme_minimal(base_size = 11)
 ```
 
+**Interpretation.** The four covariates show very different shapes: poverty and uninsured rate are both right-skewed (most counties low, a tail of disadvantaged counties), median income is roughly log-normal with a few wealthy outliers (metro suburbs), and education (% HS or higher) is sharply left-skewed — the vast majority of U.S. counties now have over 85% high-school completion, and variation mostly lies in the lower tail (67%–90%). This asymmetry in the education variable means the "bad" end of the distribution (low HS completion) carries most of the explanatory signal for diabetes disparities.
+
 ## 4.3 Correlation Among Covariates
 
 ```{r fig-corr, fig.width=6, fig.height=5}
@@ -219,7 +221,7 @@ ggplot(cor_df, aes(Var1, Var2, fill = r, label = r)) +
         panel.grid = element_blank())
 ```
 
-**Key observation.** Poverty is moderately correlated with education (−0.59) and uninsured rate (0.38), but none of the pairwise correlations exceed 0.7, so multicollinearity is not a major concern at the county scale (confirmed by VIF < 2 for all predictors in the main report).
+**Interpretation.** All four covariates are interrelated, as expected — they measure overlapping aspects of "structural disadvantage." Poverty is moderately correlated with education (r = −0.59) and with uninsured rate (r = 0.38), while median income is surprisingly close to zero with the other three (because income varies strongly across metro vs rural but less with education/insurance access). Critically, **no pairwise correlation exceeds 0.7**, and all variance-inflation factors in the main report are below 2, so multicollinearity is not a threat at the county scale (unlike the state-scale case where N = 51 would inflate standard errors). This justifies entering all four covariates simultaneously into the regression without dimension reduction.
 
 ## 4.4 Outcome vs. Covariate Scatterplots
 
@@ -242,7 +244,7 @@ merged |>
   theme_minimal(base_size = 11)
 ```
 
-All four predictors show a clear, monotonic association with diabetes prevalence in the expected direction — this motivates the multivariate regression in the main report.
+**Interpretation.** All four predictors show a clear, monotonic association with diabetes prevalence in the theoretically expected direction: positive slopes for poverty and uninsured rate (more disadvantage → more diabetes), negative slopes for median income and educational attainment (more resources → less diabetes). Visually, the **poverty rate and education panels show the strongest linear relationships** with tight scatter clouds, whereas the income panel shows a noisier pattern above ~$80k (the protective effect of income saturates). These bivariate patterns justify a linear model as a first approximation; any non-linearity is most plausibly in the income–diabetes relationship, which we flag for future robustness checks in the main report.
 
 ## 4.5 State-Level Averages
 
@@ -260,7 +262,7 @@ merged |>
   theme(legend.position = "none")
 ```
 
-The state-average ordering mirrors the classic Southeast "Diabetes Belt": Mississippi, Louisiana, Alabama, West Virginia at the top; Colorado, Vermont, Massachusetts at the bottom.
+**Interpretation.** The state-average ordering mirrors the classic Southeast "Diabetes Belt" first named by the CDC in 2011: Mississippi, Louisiana, Alabama, West Virginia, and South Carolina at the top; Colorado, Vermont, Massachusetts, and New Hampshire at the bottom. The visible gap between the top and bottom states — roughly 14% vs 7%, a two-fold difference in mean prevalence — is striking on its own, but the state-average view hides substantial within-state heterogeneity (e.g. Texas has both some of the highest-burden border counties and some very low-burden metro suburbs). This is exactly why the main report complements this bar chart with a full **county-level choropleth** (§3.4 of the report) — the state view is an overview; the county view is the evidence.
 
 # 5. Reproducibility
 

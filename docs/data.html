@@ -511,7 +511,7 @@ Figure&nbsp;1
 </div>
 </div>
 </div>
-<p>The distribution is right-skewed with a long upper tail of high-prevalence counties (&gt; 18%) concentrated in the rural South, Appalachia, and Native American tribal lands.</p>
+<p><strong>Interpretation.</strong> The distribution is right-skewed with a long upper tail of high-prevalence counties. Most counties cluster between 8% and 13%, but a small group exceeds 18% — these are concentrated in the rural South (Mississippi Delta, Alabama Black Belt), Appalachia, and Native American tribal lands. The 5.6%–21.5% range (nearly a 4-fold spread) signals that geographic disparities are substantial and warrant covariate modeling. The right skew also motivates using ordinary least squares with robust inference rather than a heavy transformation, since the tail is structural (specific high-burden regions), not statistical noise.</p>
 </section>
 <section id="covariate-distributions" class="level2">
 <h2 class="anchored" data-anchor-id="covariate-distributions">4.2 Covariate Distributions</h2>
@@ -547,6 +547,7 @@ Figure&nbsp;2
 </div>
 </div>
 </div>
+<p><strong>Interpretation.</strong> The four covariates show very different shapes: poverty and uninsured rate are both right-skewed (most counties low, a tail of disadvantaged counties), median income is roughly log-normal with a few wealthy outliers (metro suburbs), and education (% HS or higher) is sharply left-skewed — the vast majority of U.S. counties now have over 85% high-school completion, and variation mostly lies in the lower tail (67%–90%). This asymmetry in the education variable means the “bad” end of the distribution (low HS completion) carries most of the explanatory signal for diabetes disparities.</p>
 </section>
 <section id="correlation-among-covariates" class="level2">
 <h2 class="anchored" data-anchor-id="correlation-among-covariates">4.3 Correlation Among Covariates</h2>
@@ -580,7 +581,7 @@ Figure&nbsp;3
 </div>
 </div>
 </div>
-<p><strong>Key observation.</strong> Poverty is moderately correlated with education (−0.59) and uninsured rate (0.38), but none of the pairwise correlations exceed 0.7, so multicollinearity is not a major concern at the county scale (confirmed by VIF &lt; 2 for all predictors in the main report).</p>
+<p><strong>Interpretation.</strong> All four covariates are interrelated, as expected — they measure overlapping aspects of “structural disadvantage.” Poverty is moderately correlated with education (r = −0.59) and with uninsured rate (r = 0.38), while median income is surprisingly close to zero with the other three (because income varies strongly across metro vs rural but less with education/insurance access). Critically, <strong>no pairwise correlation exceeds 0.7</strong>, and all variance-inflation factors in the main report are below 2, so multicollinearity is not a threat at the county scale (unlike the state-scale case where N = 51 would inflate standard errors). This justifies entering all four covariates simultaneously into the regression without dimension reduction.</p>
 </section>
 <section id="outcome-vs.-covariate-scatterplots" class="level2">
 <h2 class="anchored" data-anchor-id="outcome-vs.-covariate-scatterplots">4.4 Outcome vs.&nbsp;Covariate Scatterplots</h2>
@@ -617,7 +618,7 @@ Figure&nbsp;4
 </div>
 </div>
 </div>
-<p>All four predictors show a clear, monotonic association with diabetes prevalence in the expected direction — this motivates the multivariate regression in the main report.</p>
+<p><strong>Interpretation.</strong> All four predictors show a clear, monotonic association with diabetes prevalence in the theoretically expected direction: positive slopes for poverty and uninsured rate (more disadvantage → more diabetes), negative slopes for median income and educational attainment (more resources → less diabetes). Visually, the <strong>poverty rate and education panels show the strongest linear relationships</strong> with tight scatter clouds, whereas the income panel shows a noisier pattern above ~$80k (the protective effect of income saturates). These bivariate patterns justify a linear model as a first approximation; any non-linearity is most plausibly in the income–diabetes relationship, which we flag for future robustness checks in the main report.</p>
 </section>
 <section id="state-level-averages" class="level2">
 <h2 class="anchored" data-anchor-id="state-level-averages">4.5 State-Level Averages</h2>
@@ -649,7 +650,7 @@ Figure&nbsp;5
 </div>
 </div>
 </div>
-<p>The state-average ordering mirrors the classic Southeast “Diabetes Belt”: Mississippi, Louisiana, Alabama, West Virginia at the top; Colorado, Vermont, Massachusetts at the bottom.</p>
+<p><strong>Interpretation.</strong> The state-average ordering mirrors the classic Southeast “Diabetes Belt” first named by the CDC in 2011: Mississippi, Louisiana, Alabama, West Virginia, and South Carolina at the top; Colorado, Vermont, Massachusetts, and New Hampshire at the bottom. The visible gap between the top and bottom states — roughly 14% vs 7%, a two-fold difference in mean prevalence — is striking on its own, but the state-average view hides substantial within-state heterogeneity (e.g.&nbsp;Texas has both some of the highest-burden border counties and some very low-burden metro suburbs). This is exactly why the main report complements this bar chart with a full <strong>county-level choropleth</strong> (§3.4 of the report) — the state view is an overview; the county view is the evidence.</p>
 </section>
 </section>
 <section id="reproducibility" class="level1">
@@ -692,16 +693,15 @@ loaded via a namespace (and not attached):
  [5] lattice_0.22-6     stringi_1.8.4      digest_0.6.37      magrittr_2.0.4    
  [9] evaluate_1.0.5     grid_4.4.3         fastmap_1.2.0      Matrix_1.7-2      
 [13] e1071_1.7-17       backports_1.5.0    DBI_1.2.3          mgcv_1.9-1        
-[17] purrr_1.1.0        crosstalk_1.2.2    codetools_0.2-20   cli_3.6.5         
-[21] rlang_1.1.6        units_1.0-0        splines_4.4.3      withr_3.0.2       
-[25] yaml_2.3.10        tools_4.4.3        uuid_1.2-1         geojsonsf_2.0.5   
-[29] curl_7.0.0         vctrs_0.6.5        R6_2.6.1           proxy_0.4-29      
-[33] lifecycle_1.0.4    classInt_0.4-11    stringr_1.5.1      V8_8.0.1          
-[37] htmlwidgets_1.6.4  pkgconfig_2.0.3    pillar_1.10.1      gtable_0.3.6      
-[41] glue_1.8.0         Rcpp_1.1.0         xfun_0.54          tibble_3.2.1      
-[45] tidyselect_1.2.1   farver_2.1.2       nlme_3.1-168       htmltools_0.5.8.1 
-[49] labeling_0.4.3     rmarkdown_2.29     compiler_4.4.3     S7_0.2.0          
-[53] sp_2.2-0          </code></pre>
+[17] purrr_1.1.0        crosstalk_1.2.2    cli_3.6.5          rlang_1.1.6       
+[21] units_1.0-0        splines_4.4.3      withr_3.0.2        yaml_2.3.10       
+[25] tools_4.4.3        uuid_1.2-1         curl_7.0.0         vctrs_0.6.5       
+[29] R6_2.6.1           proxy_0.4-29       lifecycle_1.0.4    classInt_0.4-11   
+[33] stringr_1.5.1      V8_8.0.1           htmlwidgets_1.6.4  pkgconfig_2.0.3   
+[37] pillar_1.10.1      gtable_0.3.6       glue_1.8.0         Rcpp_1.1.0        
+[41] xfun_0.54          tibble_3.2.1       tidyselect_1.2.1   farver_2.1.2      
+[45] nlme_3.1-168       htmltools_0.5.8.1  labeling_0.4.3     rmarkdown_2.29    
+[49] compiler_4.4.3     S7_0.2.0           sp_2.2-0          </code></pre>
 </div>
 </div>
 
@@ -1342,7 +1342,7 @@ loaded via a namespace (and not attached):
 <span id="cb22-179"><a href="#cb22-179" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">12</span>)</span>
 <span id="cb22-180"><a href="#cb22-180" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb22-181"><a href="#cb22-181" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-182"><a href="#cb22-182" aria-hidden="true" tabindex="-1"></a>The distribution is right-skewed with a long upper tail of high-prevalence counties (&gt; 18%) concentrated in the rural South, Appalachia, and Native American tribal lands.</span>
+<span id="cb22-182"><a href="#cb22-182" aria-hidden="true" tabindex="-1"></a>**Interpretation.** The distribution is right-skewed with a long upper tail of high-prevalence counties. Most counties cluster between 8% and 13%, but a small group exceeds 18% — these are concentrated in the rural South (Mississippi Delta, Alabama Black Belt), Appalachia, and Native American tribal lands. The 5.6%–21.5% range (nearly a 4-fold spread) signals that geographic disparities are substantial and warrant covariate modeling. The right skew also motivates using ordinary least squares with robust inference rather than a heavy transformation, since the tail is structural (specific high-burden regions), not statistical noise.</span>
 <span id="cb22-183"><a href="#cb22-183" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb22-184"><a href="#cb22-184" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.2 Covariate Distributions</span></span>
 <span id="cb22-185"><a href="#cb22-185" aria-hidden="true" tabindex="-1"></a></span>
@@ -1364,74 +1364,76 @@ loaded via a namespace (and not attached):
 <span id="cb22-201"><a href="#cb22-201" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>)</span>
 <span id="cb22-202"><a href="#cb22-202" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb22-203"><a href="#cb22-203" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-204"><a href="#cb22-204" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.3 Correlation Among Covariates</span></span>
+<span id="cb22-204"><a href="#cb22-204" aria-hidden="true" tabindex="-1"></a>**Interpretation.** The four covariates show very different shapes: poverty and uninsured rate are both right-skewed (most counties low, a tail of disadvantaged counties), median income is roughly log-normal with a few wealthy outliers (metro suburbs), and education (% HS or higher) is sharply left-skewed — the vast majority of U.S. counties now have over 85% high-school completion, and variation mostly lies in the lower tail (67%–90%). This asymmetry in the education variable means the "bad" end of the distribution (low HS completion) carries most of the explanatory signal for diabetes disparities.</span>
 <span id="cb22-205"><a href="#cb22-205" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-206"><a href="#cb22-206" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-corr, fig.width=6, fig.height=5}</span></span>
-<span id="cb22-207"><a href="#cb22-207" aria-hidden="true" tabindex="-1"></a>X <span class="ot">&lt;-</span> merged <span class="sc">|&gt;</span> <span class="fu">select</span>(poverty_pct, uninsured_pct, income_10k, hs_or_higher_pct)</span>
-<span id="cb22-208"><a href="#cb22-208" aria-hidden="true" tabindex="-1"></a>cor_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">as.table</span>(<span class="fu">round</span>(<span class="fu">cor</span>(X), <span class="dv">2</span>)))</span>
-<span id="cb22-209"><a href="#cb22-209" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(cor_df) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Var1"</span>,<span class="st">"Var2"</span>,<span class="st">"r"</span>)</span>
-<span id="cb22-210"><a href="#cb22-210" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-211"><a href="#cb22-211" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(cor_df, <span class="fu">aes</span>(Var1, Var2, <span class="at">fill =</span> r, <span class="at">label =</span> r)) <span class="sc">+</span></span>
-<span id="cb22-212"><a href="#cb22-212" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_tile</span>(<span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
-<span id="cb22-213"><a href="#cb22-213" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="at">size =</span> <span class="dv">4</span>) <span class="sc">+</span></span>
-<span id="cb22-214"><a href="#cb22-214" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(<span class="at">low =</span> <span class="st">"#2C7BB6"</span>, <span class="at">mid =</span> <span class="st">"white"</span>, <span class="at">high =</span> <span class="st">"#D7191C"</span>,</span>
-<span id="cb22-215"><a href="#cb22-215" aria-hidden="true" tabindex="-1"></a>                       <span class="at">midpoint =</span> <span class="dv">0</span>, <span class="at">limits =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
-<span id="cb22-216"><a href="#cb22-216" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="cn">NULL</span>, <span class="at">title =</span> <span class="st">"Covariate Correlation Matrix"</span>) <span class="sc">+</span></span>
-<span id="cb22-217"><a href="#cb22-217" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>) <span class="sc">+</span></span>
-<span id="cb22-218"><a href="#cb22-218" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">30</span>, <span class="at">hjust =</span> <span class="dv">1</span>),</span>
-<span id="cb22-219"><a href="#cb22-219" aria-hidden="true" tabindex="-1"></a>        <span class="at">panel.grid =</span> <span class="fu">element_blank</span>())</span>
-<span id="cb22-220"><a href="#cb22-220" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb22-221"><a href="#cb22-221" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-222"><a href="#cb22-222" aria-hidden="true" tabindex="-1"></a>**Key observation.** Poverty is moderately correlated with education (−0.59) and uninsured rate (0.38), but none of the pairwise correlations exceed 0.7, so multicollinearity is not a major concern at the county scale (confirmed by VIF &lt; 2 for all predictors in the main report).</span>
+<span id="cb22-206"><a href="#cb22-206" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.3 Correlation Among Covariates</span></span>
+<span id="cb22-207"><a href="#cb22-207" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-208"><a href="#cb22-208" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-corr, fig.width=6, fig.height=5}</span></span>
+<span id="cb22-209"><a href="#cb22-209" aria-hidden="true" tabindex="-1"></a>X <span class="ot">&lt;-</span> merged <span class="sc">|&gt;</span> <span class="fu">select</span>(poverty_pct, uninsured_pct, income_10k, hs_or_higher_pct)</span>
+<span id="cb22-210"><a href="#cb22-210" aria-hidden="true" tabindex="-1"></a>cor_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">as.table</span>(<span class="fu">round</span>(<span class="fu">cor</span>(X), <span class="dv">2</span>)))</span>
+<span id="cb22-211"><a href="#cb22-211" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(cor_df) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Var1"</span>,<span class="st">"Var2"</span>,<span class="st">"r"</span>)</span>
+<span id="cb22-212"><a href="#cb22-212" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-213"><a href="#cb22-213" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(cor_df, <span class="fu">aes</span>(Var1, Var2, <span class="at">fill =</span> r, <span class="at">label =</span> r)) <span class="sc">+</span></span>
+<span id="cb22-214"><a href="#cb22-214" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_tile</span>(<span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb22-215"><a href="#cb22-215" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="at">size =</span> <span class="dv">4</span>) <span class="sc">+</span></span>
+<span id="cb22-216"><a href="#cb22-216" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(<span class="at">low =</span> <span class="st">"#2C7BB6"</span>, <span class="at">mid =</span> <span class="st">"white"</span>, <span class="at">high =</span> <span class="st">"#D7191C"</span>,</span>
+<span id="cb22-217"><a href="#cb22-217" aria-hidden="true" tabindex="-1"></a>                       <span class="at">midpoint =</span> <span class="dv">0</span>, <span class="at">limits =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb22-218"><a href="#cb22-218" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="cn">NULL</span>, <span class="at">title =</span> <span class="st">"Covariate Correlation Matrix"</span>) <span class="sc">+</span></span>
+<span id="cb22-219"><a href="#cb22-219" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>) <span class="sc">+</span></span>
+<span id="cb22-220"><a href="#cb22-220" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">30</span>, <span class="at">hjust =</span> <span class="dv">1</span>),</span>
+<span id="cb22-221"><a href="#cb22-221" aria-hidden="true" tabindex="-1"></a>        <span class="at">panel.grid =</span> <span class="fu">element_blank</span>())</span>
+<span id="cb22-222"><a href="#cb22-222" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb22-223"><a href="#cb22-223" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-224"><a href="#cb22-224" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.4 Outcome vs. Covariate Scatterplots</span></span>
+<span id="cb22-224"><a href="#cb22-224" aria-hidden="true" tabindex="-1"></a>**Interpretation.** All four covariates are interrelated, as expected — they measure overlapping aspects of "structural disadvantage." Poverty is moderately correlated with education (r = −0.59) and with uninsured rate (r = 0.38), while median income is surprisingly close to zero with the other three (because income varies strongly across metro vs rural but less with education/insurance access). Critically, **no pairwise correlation exceeds 0.7**, and all variance-inflation factors in the main report are below 2, so multicollinearity is not a threat at the county scale (unlike the state-scale case where N = 51 would inflate standard errors). This justifies entering all four covariates simultaneously into the regression without dimension reduction.</span>
 <span id="cb22-225"><a href="#cb22-225" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-226"><a href="#cb22-226" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-scatter, fig.width=9, fig.height=7}</span></span>
-<span id="cb22-227"><a href="#cb22-227" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
-<span id="cb22-228"><a href="#cb22-228" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(diabetes, poverty_pct, uninsured_pct, median_income, hs_or_higher_pct) <span class="sc">|&gt;</span></span>
-<span id="cb22-229"><a href="#cb22-229" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="sc">-</span>diabetes, <span class="at">names_to =</span> <span class="st">"var"</span>, <span class="at">values_to =</span> <span class="st">"val"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb22-230"><a href="#cb22-230" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">var =</span> <span class="fu">recode</span>(var,</span>
-<span id="cb22-231"><a href="#cb22-231" aria-hidden="true" tabindex="-1"></a>    <span class="at">poverty_pct      =</span> <span class="st">"Poverty rate (%)"</span>,</span>
-<span id="cb22-232"><a href="#cb22-232" aria-hidden="true" tabindex="-1"></a>    <span class="at">uninsured_pct    =</span> <span class="st">"Uninsured rate (%)"</span>,</span>
-<span id="cb22-233"><a href="#cb22-233" aria-hidden="true" tabindex="-1"></a>    <span class="at">median_income    =</span> <span class="st">"Median household income ($)"</span>,</span>
-<span id="cb22-234"><a href="#cb22-234" aria-hidden="true" tabindex="-1"></a>    <span class="at">hs_or_higher_pct =</span> <span class="st">"% with HS diploma or higher"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb22-235"><a href="#cb22-235" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(val, diabetes)) <span class="sc">+</span></span>
-<span id="cb22-236"><a href="#cb22-236" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.25</span>, <span class="at">color =</span> <span class="st">"#555"</span>, <span class="at">size =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
-<span id="cb22-237"><a href="#cb22-237" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>, <span class="at">color =</span> <span class="st">"#CB4B4B"</span>, <span class="at">linewidth =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
-<span id="cb22-238"><a href="#cb22-238" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> var, <span class="at">scales =</span> <span class="st">"free_x"</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb22-239"><a href="#cb22-239" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">labels =</span> <span class="fu">label_comma</span>()) <span class="sc">+</span></span>
-<span id="cb22-240"><a href="#cb22-240" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Diabetes prevalence (%)"</span>,</span>
-<span id="cb22-241"><a href="#cb22-241" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"Bivariate Relationships: Diabetes vs. ACS Covariates"</span>) <span class="sc">+</span></span>
-<span id="cb22-242"><a href="#cb22-242" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>)</span>
-<span id="cb22-243"><a href="#cb22-243" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb22-244"><a href="#cb22-244" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-245"><a href="#cb22-245" aria-hidden="true" tabindex="-1"></a>All four predictors show a clear, monotonic association with diabetes prevalence in the expected direction — this motivates the multivariate regression in the main report.</span>
+<span id="cb22-226"><a href="#cb22-226" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.4 Outcome vs. Covariate Scatterplots</span></span>
+<span id="cb22-227"><a href="#cb22-227" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-228"><a href="#cb22-228" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-scatter, fig.width=9, fig.height=7}</span></span>
+<span id="cb22-229"><a href="#cb22-229" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
+<span id="cb22-230"><a href="#cb22-230" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(diabetes, poverty_pct, uninsured_pct, median_income, hs_or_higher_pct) <span class="sc">|&gt;</span></span>
+<span id="cb22-231"><a href="#cb22-231" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="sc">-</span>diabetes, <span class="at">names_to =</span> <span class="st">"var"</span>, <span class="at">values_to =</span> <span class="st">"val"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb22-232"><a href="#cb22-232" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">var =</span> <span class="fu">recode</span>(var,</span>
+<span id="cb22-233"><a href="#cb22-233" aria-hidden="true" tabindex="-1"></a>    <span class="at">poverty_pct      =</span> <span class="st">"Poverty rate (%)"</span>,</span>
+<span id="cb22-234"><a href="#cb22-234" aria-hidden="true" tabindex="-1"></a>    <span class="at">uninsured_pct    =</span> <span class="st">"Uninsured rate (%)"</span>,</span>
+<span id="cb22-235"><a href="#cb22-235" aria-hidden="true" tabindex="-1"></a>    <span class="at">median_income    =</span> <span class="st">"Median household income ($)"</span>,</span>
+<span id="cb22-236"><a href="#cb22-236" aria-hidden="true" tabindex="-1"></a>    <span class="at">hs_or_higher_pct =</span> <span class="st">"% with HS diploma or higher"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb22-237"><a href="#cb22-237" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(val, diabetes)) <span class="sc">+</span></span>
+<span id="cb22-238"><a href="#cb22-238" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.25</span>, <span class="at">color =</span> <span class="st">"#555"</span>, <span class="at">size =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb22-239"><a href="#cb22-239" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>, <span class="at">color =</span> <span class="st">"#CB4B4B"</span>, <span class="at">linewidth =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb22-240"><a href="#cb22-240" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> var, <span class="at">scales =</span> <span class="st">"free_x"</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb22-241"><a href="#cb22-241" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">labels =</span> <span class="fu">label_comma</span>()) <span class="sc">+</span></span>
+<span id="cb22-242"><a href="#cb22-242" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Diabetes prevalence (%)"</span>,</span>
+<span id="cb22-243"><a href="#cb22-243" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"Bivariate Relationships: Diabetes vs. ACS Covariates"</span>) <span class="sc">+</span></span>
+<span id="cb22-244"><a href="#cb22-244" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>)</span>
+<span id="cb22-245"><a href="#cb22-245" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb22-246"><a href="#cb22-246" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-247"><a href="#cb22-247" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.5 State-Level Averages</span></span>
+<span id="cb22-247"><a href="#cb22-247" aria-hidden="true" tabindex="-1"></a>**Interpretation.** All four predictors show a clear, monotonic association with diabetes prevalence in the theoretically expected direction: positive slopes for poverty and uninsured rate (more disadvantage → more diabetes), negative slopes for median income and educational attainment (more resources → less diabetes). Visually, the **poverty rate and education panels show the strongest linear relationships** with tight scatter clouds, whereas the income panel shows a noisier pattern above ~$80k (the protective effect of income saturates). These bivariate patterns justify a linear model as a first approximation; any non-linearity is most plausibly in the income–diabetes relationship, which we flag for future robustness checks in the main report.</span>
 <span id="cb22-248"><a href="#cb22-248" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-249"><a href="#cb22-249" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-state-bar, fig.width=8, fig.height=8}</span></span>
-<span id="cb22-250"><a href="#cb22-250" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
-<span id="cb22-251"><a href="#cb22-251" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(state_abbr, state) <span class="sc">|&gt;</span></span>
-<span id="cb22-252"><a href="#cb22-252" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">diabetes =</span> <span class="fu">mean</span>(diabetes), <span class="at">n =</span> dplyr<span class="sc">::</span><span class="fu">n</span>(), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb22-253"><a href="#cb22-253" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="fu">reorder</span>(state_abbr, diabetes), diabetes, <span class="at">fill =</span> diabetes)) <span class="sc">+</span></span>
-<span id="cb22-254"><a href="#cb22-254" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
-<span id="cb22-255"><a href="#cb22-255" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_distiller</span>(<span class="at">palette =</span> <span class="st">"YlOrRd"</span>, <span class="at">direction =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
-<span id="cb22-256"><a href="#cb22-256" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>() <span class="sc">+</span></span>
-<span id="cb22-257"><a href="#cb22-257" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Mean county diabetes prevalence (%)"</span>,</span>
-<span id="cb22-258"><a href="#cb22-258" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"State Averages — County Diabetes Prevalence"</span>) <span class="sc">+</span></span>
-<span id="cb22-259"><a href="#cb22-259" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">10</span>) <span class="sc">+</span></span>
-<span id="cb22-260"><a href="#cb22-260" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
-<span id="cb22-261"><a href="#cb22-261" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb22-262"><a href="#cb22-262" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-263"><a href="#cb22-263" aria-hidden="true" tabindex="-1"></a>The state-average ordering mirrors the classic Southeast "Diabetes Belt": Mississippi, Louisiana, Alabama, West Virginia at the top; Colorado, Vermont, Massachusetts at the bottom.</span>
+<span id="cb22-249"><a href="#cb22-249" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.5 State-Level Averages</span></span>
+<span id="cb22-250"><a href="#cb22-250" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-251"><a href="#cb22-251" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-state-bar, fig.width=8, fig.height=8}</span></span>
+<span id="cb22-252"><a href="#cb22-252" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
+<span id="cb22-253"><a href="#cb22-253" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(state_abbr, state) <span class="sc">|&gt;</span></span>
+<span id="cb22-254"><a href="#cb22-254" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">diabetes =</span> <span class="fu">mean</span>(diabetes), <span class="at">n =</span> dplyr<span class="sc">::</span><span class="fu">n</span>(), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb22-255"><a href="#cb22-255" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="fu">reorder</span>(state_abbr, diabetes), diabetes, <span class="at">fill =</span> diabetes)) <span class="sc">+</span></span>
+<span id="cb22-256"><a href="#cb22-256" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb22-257"><a href="#cb22-257" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_distiller</span>(<span class="at">palette =</span> <span class="st">"YlOrRd"</span>, <span class="at">direction =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb22-258"><a href="#cb22-258" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>() <span class="sc">+</span></span>
+<span id="cb22-259"><a href="#cb22-259" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Mean county diabetes prevalence (%)"</span>,</span>
+<span id="cb22-260"><a href="#cb22-260" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"State Averages — County Diabetes Prevalence"</span>) <span class="sc">+</span></span>
+<span id="cb22-261"><a href="#cb22-261" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">10</span>) <span class="sc">+</span></span>
+<span id="cb22-262"><a href="#cb22-262" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
+<span id="cb22-263"><a href="#cb22-263" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb22-264"><a href="#cb22-264" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-265"><a href="#cb22-265" aria-hidden="true" tabindex="-1"></a><span class="fu"># 5. Reproducibility</span></span>
+<span id="cb22-265"><a href="#cb22-265" aria-hidden="true" tabindex="-1"></a>**Interpretation.** The state-average ordering mirrors the classic Southeast "Diabetes Belt" first named by the CDC in 2011: Mississippi, Louisiana, Alabama, West Virginia, and South Carolina at the top; Colorado, Vermont, Massachusetts, and New Hampshire at the bottom. The visible gap between the top and bottom states — roughly 14% vs 7%, a two-fold difference in mean prevalence — is striking on its own, but the state-average view hides substantial within-state heterogeneity (e.g. Texas has both some of the highest-burden border counties and some very low-burden metro suburbs). This is exactly why the main report complements this bar chart with a full **county-level choropleth** (§3.4 of the report) — the state view is an overview; the county view is the evidence.</span>
 <span id="cb22-266"><a href="#cb22-266" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-267"><a href="#cb22-267" aria-hidden="true" tabindex="-1"></a>All code, data URLs, and package versions needed to recreate every figure and table on this page are contained in the source <span class="in">`data.qmd`</span>. Click the **`&lt;/&gt; Code`** button in the page header to view all code blocks.</span>
+<span id="cb22-267"><a href="#cb22-267" aria-hidden="true" tabindex="-1"></a><span class="fu"># 5. Reproducibility</span></span>
 <span id="cb22-268"><a href="#cb22-268" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-269"><a href="#cb22-269" aria-hidden="true" tabindex="-1"></a><span class="in">```{r sessioninfo}</span></span>
-<span id="cb22-270"><a href="#cb22-270" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
-<span id="cb22-271"><a href="#cb22-271" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span></code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
+<span id="cb22-269"><a href="#cb22-269" aria-hidden="true" tabindex="-1"></a>All code, data URLs, and package versions needed to recreate every figure and table on this page are contained in the source <span class="in">`data.qmd`</span>. Click the **`&lt;/&gt; Code`** button in the page header to view all code blocks.</span>
+<span id="cb22-270"><a href="#cb22-270" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-271"><a href="#cb22-271" aria-hidden="true" tabindex="-1"></a><span class="in">```{r sessioninfo}</span></span>
+<span id="cb22-272"><a href="#cb22-272" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
+<span id="cb22-273"><a href="#cb22-273" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span></code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
 
