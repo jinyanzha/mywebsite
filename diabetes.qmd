@@ -21,7 +21,7 @@ execute:
 Sys.setenv(LANGUAGE = "en")
 options(repos = c(CRAN = "https://cloud.r-project.org"))
 pkgs <- c("httr","jsonlite","dplyr","tidyr","ggplot2","sf","tigris","leaflet",
-          "leaflet.extras","tidycensus","broom","spdep","knitr","RColorBrewer","rmapshaper")
+          "leaflet.extras","tidycensus","broom","spdep","knitr","RColorBrewer","rmapshaper","ggrepel")
 for (p in pkgs) {
   if (!requireNamespace(p, quietly = TRUE))
     suppressMessages(install.packages(p, quiet = TRUE))
@@ -193,9 +193,19 @@ states_poly <- states_poly |>
   shift_state("02", dx = 2.2e6, dy = -2.5e6, scale = 0.35) |>
   shift_state("15", dx = 3.8e6, dy = -1.0e6, scale = 1.1)
 
+ctr <- suppressWarnings(st_centroid(states_poly))
+ctr_coords <- st_coordinates(ctr)
+ctr$x <- ctr_coords[, 1]
+ctr$y <- ctr_coords[, 2]
+
 ggplot(states_poly) +
   geom_sf(aes(fill = diabetes), color = "white", linewidth = 0.3) +
-  geom_sf_text(aes(label = STUSPS), size = 2.6, color = "grey20") +
+  geom_text_repel(data = ctr, aes(x = x, y = y, label = STUSPS),
+                  size = 2.6, color = "grey20",
+                  max.overlaps = 50,
+                  segment.size = 0.3, segment.color = "grey50",
+                  min.segment.length = 0,
+                  box.padding = 0.3, point.padding = 0.1) +
   scale_fill_distiller(palette = "YlOrRd", direction = 1,
                        name = "Diabetes\nprevalence (%)",
                        na.value = "grey90") +
