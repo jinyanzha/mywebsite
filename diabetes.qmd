@@ -1,6 +1,6 @@
 ---
-title: "Mapping the Diabetes Belt"
-subtitle: "A County-Level Spatial Analysis of Diabetes Prevalence and Its Socioeconomic Determinants"
+title: "County-Level Spatial Analysis of Diabetes Prevalence in the United States"
+subtitle: "Socioeconomic Determinants and Geographic Clustering of the Diabetes Belt"
 author: "BIOSTAT 620 Final Project"
 date: today
 format:
