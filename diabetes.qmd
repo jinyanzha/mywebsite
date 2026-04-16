@@ -301,7 +301,7 @@ vifs <- sapply(names(X), function(v) {
 data.frame(Variable = names(vifs), VIF = round(vifs, 2)) |> knitr::kable()
 ```
 
-**Interpretation.** No pairwise correlation exceeds 0.6 in absolute value, and every VIF is below 2 — well under the conventional multicollinearity threshold of 5. The four covariates can therefore be entered simultaneously in a standard multivariate OLS regression without dimension reduction.
+**Interpretation.** The strongest pairwise correlation is between poverty rate and median income (r = −0.72), reflecting the intuitive fact that poorer counties have lower median incomes. All other pairwise correlations are below 0.6 in absolute value. Critically, every Variance Inflation Factor is below 2.5 — well under the conventional multicollinearity threshold of 5. The four covariates can therefore be entered simultaneously in a standard multivariate OLS regression without dimension reduction.
 
 ## Regression results
 
