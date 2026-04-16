@@ -4,8 +4,8 @@ title: "Home"
 
 # 👋 Jinyan Zha
 
-[ Hi, I’m a Biostatistics graduate student at the University of Michigan.\
-Welcome to my personal website! ]{style="font-size:20px;"}
+[Hi, I’m a Biostatistics graduate student at the University of Michigan.\
+Welcome to my personal website!]{style="font-size:20px;"}
 
 ------------------------------------------------------------------------
 

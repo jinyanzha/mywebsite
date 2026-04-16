@@ -10,6 +10,10 @@ website:
         text: Home
       - href: wuxi.qmd
         text: Wuxi
+      - href: diabetes.qmd
+        text: Diabetes Report
+      - href: about.qmd
+        text: About
 
 format:
   html:
