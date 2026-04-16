@@ -239,7 +239,13 @@ Pairwise correlations among the four covariates are all below 0.6 in absolute va
 
 ## 4.2 Primary Model: Diabetes ~ Socioeconomic Covariates
 
-Covariates are z-standardized so the coefficients are directly comparable — each represents the expected change in diabetes prevalence (percentage points) per one-standard-deviation increase in that predictor.
+We fit an ordinary least squares (OLS) multivariate linear regression of age-adjusted county diabetes prevalence on four z-standardized socioeconomic covariates:
+
+$$
+\text{diabetes}_i = \beta_0 + \beta_1 \cdot \text{poverty}_i^{z} + \beta_2 \cdot \text{uninsured}_i^{z} + \beta_3 \cdot \text{income}_i^{z} + \beta_4 \cdot \text{HS}_i^{z} + \varepsilon_i
+$$
+
+where $i$ indexes each of the $N = 3{,}143$ counties, superscript $z$ denotes z-score standardization, and $\varepsilon_i \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma^2)$. Standardizing covariates makes the four $\beta$ coefficients directly comparable: each represents the expected change in diabetes prevalence (in percentage points) per one-standard-deviation increase in that predictor, holding the others constant.
 
 ```{r model}
 df <- merged |>
