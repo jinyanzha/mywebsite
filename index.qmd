@@ -36,11 +36,12 @@ Welcome to my personal website!]{style="font-size:20px;"}
 
 ------------------------------------------------------------------------
 
-## 🌏 More About Me
+## 📘 BIOSTAT 620 Final Project
 
 <span style="font-size:18px;">
 
-I grew up in Wuxi, a beautiful city near Taihu Lake in eastern China.\
-You can learn more about my hometown here 👉 [Wuxi Page](wuxi.html)
+A county-level spatial analysis of diabetes prevalence in the United States, linking CDC PLACES health estimates with U.S. Census ACS socioeconomic indicators.
+
+👉 [Read the full report](diabetes.html) · [About the Data](data.html)
 
 </span>

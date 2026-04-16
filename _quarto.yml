@@ -8,8 +8,6 @@ website:
     left:
       - href: index.qmd
         text: Home
-      - href: wuxi.qmd
-        text: Wuxi
       - href: diabetes.qmd
         text: Diabetes Report
       - href: data.qmd
