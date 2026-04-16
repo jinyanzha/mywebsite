@@ -241,7 +241,7 @@ leaflet(map_df) |>
     group       = "counties",
     fillColor   = ~pal(diabetes),
     weight      = 0.2, color = "#888", fillOpacity = 0.85,
-    label       = ~sprintf("%s, %s: %.1f%%", county, state_abbr, diabetes),
+    label       = ~search_label,
     popup       = ~sprintf("<b>%s, %s</b><br/>Diabetes: %.1f%%<br/>Poverty: %.1f%%<br/>Uninsured: %.1f%%<br/>HS or higher: %.1f%%",
                            county, state_abbr, diabetes, poverty_pct, uninsured_pct, hs_or_higher_pct),
     highlightOptions = highlightOptions(weight = 2, color = "#000", bringToFront = TRUE)) |>
