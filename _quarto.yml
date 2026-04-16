@@ -24,6 +24,8 @@ format:
       - brand
     css: styles.css
     toc: true
+    code-fold: true
+    code-tools: true
 
 editor: visual
 
