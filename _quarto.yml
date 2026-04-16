@@ -12,6 +12,8 @@ website:
         text: Wuxi
       - href: diabetes.qmd
         text: Diabetes Report
+      - href: data.qmd
+        text: About the Data
       - href: about.qmd
         text: About
 

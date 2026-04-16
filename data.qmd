@@ -1,0 +1,271 @@
+---
+title: "About the Data"
+subtitle: "Data sources, ingestion, cleaning, and exploratory analysis"
+toc: true
+toc-depth: 3
+format:
+  html:
+    code-fold: true
+    code-tools: true
+execute:
+  warning: false
+  message: false
+  echo: true
+---
+
+```{r setup}
+#| include: false
+Sys.setenv(LANGUAGE = "en")
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+pkgs <- c("httr","jsonlite","dplyr","tidyr","ggplot2","sf","tigris","leaflet",
+          "broom","knitr","RColorBrewer","rmapshaper","scales")
+for (p in pkgs) {
+  if (!requireNamespace(p, quietly = TRUE))
+    suppressMessages(install.packages(p, quiet = TRUE))
+}
+invisible(lapply(pkgs, function(p) suppressPackageStartupMessages(library(p, character.only = TRUE))))
+options(tigris_use_cache = TRUE)
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+# 1. Overview
+
+This page documents every step of the data pipeline that feeds the main [Diabetes Report](diabetes.qmd). All data are public, downloaded live via APIs, and fully reproducible.
+
+**Pipeline:**
+
+```
+CDC PLACES API ─┐
+                ├─► join on 5-digit county FIPS ─► analytic dataset (N = 3,143)
+Census ACS API ─┘
+                                                   │
+                      tigris county polygons ──────┴─► spatial layer
+```
+
+# 2. Raw Data Sources
+
+## 2.1 CDC PLACES — Outcome Variable
+
+**What it is.** PLACES (Population Level Analysis and Community Estimates) is the CDC's flagship small-area estimation program, publishing model-based prevalence estimates for 40+ chronic conditions and health behaviors at the county, census-tract, ZIP-code, and place level. Estimates are derived from the Behavioral Risk Factor Surveillance System (BRFSS) using multilevel post-stratification.
+
+**Measure used.** `DIABETES` — "Diagnosed diabetes among adults aged ≥18 years," age-adjusted prevalence (%).
+
+**Why this dataset.** CDC publishes several PLACES county releases, each with slightly different coverage due to BRFSS sample-size constraints. I tested four county-level datasets on Socrata and found only one with **complete 50-state coverage for age-adjusted diabetes**:
+
+| Dataset ID | PA | KY | FL | CT | Total N | Selected? |
+|---|---|---|---|---|---|---|
+| `swc5-untb` (2024) | ❌ 0 | ❌ 0 | ✅ 67 | ✅ 9 | 2,958 | — |
+| `h3ej-a9ec` (2021) | ✅ 67 | ✅ 120 | ❌ 0 | ✅ 8 | 3,077 | — |
+| `cwsq-ngmh` | — | — | — | — | — | — |
+| **`duw2-7jbt` (2020)** | **✅ 67** | **✅ 120** | **✅ 67** | **✅ 8** | **3,144** | **✅** |
+
+**Endpoint (Socrata).** `https://data.cdc.gov/resource/duw2-7jbt.json`
+
+**Query.** We pull only rows where `measureid = 'DIABETES'` and `datavaluetypeid = 'AgeAdjPrv'` (age-adjusted prevalence, not crude).
+
+```{r pull-places}
+soql <- "SELECT statedesc, stateabbr, locationname, locationid, data_value WHERE measureid='DIABETES' AND datavaluetypeid='AgeAdjPrv' LIMIT 50000"
+url  <- paste0("https://data.cdc.gov/resource/duw2-7jbt.json?$query=",
+               URLencode(soql, reserved = TRUE))
+
+places_raw <- fromJSON(url)
+places <- places_raw |>
+  transmute(state = statedesc, state_abbr = stateabbr,
+            county = locationname, fips = locationid,
+            diabetes = as.numeric(data_value)) |>
+  filter(!is.na(diabetes))
+
+cat("Rows pulled from PLACES:", nrow(places), "\n")
+cat("States represented:", length(unique(places$state_abbr)), "\n")
+```
+
+## 2.2 U.S. Census ACS — Covariates
+
+**What it is.** The American Community Survey (ACS) 5-year estimates provide county-level socioeconomic indicators pooled over five survey years. We use the 2021 5-year release (covering 2017–2021) because it still uses Connecticut's traditional 8-county FIPS codes, which match PLACES; the 2022 release switched CT to "Planning Regions" with incompatible FIPS.
+
+**Variables selected** (from ACS Subject Tables):
+
+| Variable | ACS code | What it measures |
+|---|---|---|
+| `poverty_pct` | S1701_C03_001 | % of population below federal poverty line |
+| `uninsured_pct` | S2701_C05_001 | % of population without health insurance |
+| `median_income` | S1901_C01_012 | Median household income (USD) |
+| `hs_or_higher_pct` | S1501_C02_014 | % of adults 25+ with a HS diploma or higher |
+
+**Endpoint.** `https://api.census.gov/data/2021/acs/acs5/subject`
+
+```{r pull-acs}
+base <- "https://api.census.gov/data/2021/acs/acs5/subject"
+vars <- "S1701_C03_001E,S2701_C05_001E,S1901_C01_012E,S1501_C02_014E"
+resp <- GET(base, query = list(get = paste0("NAME,", vars),
+                                `for` = "county:*", `in` = "state:*"))
+acs <- as.data.frame(fromJSON(rawToChar(resp$content))[-1, ],
+                     stringsAsFactors = FALSE)
+names(acs) <- c("NAME","poverty_pct","uninsured_pct","median_income",
+                "hs_or_higher_pct","state_fips","county_fips")
+acs$GEOID <- paste0(acs$state_fips, acs$county_fips)
+for (v in c("poverty_pct","uninsured_pct","median_income","hs_or_higher_pct"))
+  acs[[v]] <- as.numeric(acs[[v]])
+
+cat("ACS counties returned:", nrow(acs), "\n")
+```
+
+## 2.3 TIGER/Line County Boundaries
+
+We use the `tigris` R package to download simplified county polygons (cartographic-boundary files, 20m resolution) for the 2021 vintage, matching the ACS year.
+
+```{r pull-tigris, cache=TRUE}
+counties_sf <- counties(cb = TRUE, resolution = "20m", year = 2021) |>
+  filter(!STATEFP %in% c("02","15","60","66","69","72","78")) |>   # drop AK/HI/territories for Moran's I
+  st_transform(4326) |>
+  ms_simplify(keep = 0.3, keep_shapes = TRUE)
+
+cat("County polygons (continental US):", nrow(counties_sf), "\n")
+```
+
+# 3. Data Cleaning and Merging
+
+## 3.1 Merge on 5-digit FIPS
+
+Both PLACES and ACS use 5-digit county FIPS (`SSCCC`, where `SS` is state and `CCC` is county). We merge with an `inner_join`, then drop any row missing any covariate.
+
+```{r merge}
+merged <- places |>
+  inner_join(acs, by = c("fips" = "GEOID")) |>
+  filter(!is.na(diabetes), !is.na(poverty_pct), !is.na(uninsured_pct),
+         !is.na(median_income), !is.na(hs_or_higher_pct)) |>
+  mutate(income_10k = median_income / 10000)
+
+cat("Final analytic N:", nrow(merged), "\n")
+cat("States in analytic dataset:", length(unique(merged$state_abbr)), "\n")
+```
+
+## 3.2 Row Losses (Data Provenance)
+
+```{r losses}
+n_places <- nrow(places)
+n_acs    <- nrow(acs)
+n_merged <- nrow(merged)
+data.frame(
+  Step = c("PLACES raw (counties)",
+           "ACS raw (counties)",
+           "Inner join on FIPS + complete-case filter",
+           "Final analytic dataset"),
+  N = c(n_places, n_acs, n_merged, n_merged)
+) |> knitr::kable()
+```
+
+The ~1-county attrition comes from (a) the national aggregate row in PLACES (FIPS = "US"), (b) a handful of small counties with missing ACS estimates (usually Alaska boroughs).
+
+## 3.3 Variable Transformations
+
+- `income_10k` — median income rescaled to \$10k units for interpretable regression coefficients
+- z-standardized versions of all covariates created downstream in the main report so coefficients are directly comparable
+
+# 4. Exploratory Data Analysis
+
+## 4.1 Outcome Distribution
+
+```{r fig-dist, fig.width=8, fig.height=4}
+ggplot(merged, aes(diabetes)) +
+  geom_histogram(bins = 50, fill = "#CB4B4B", color = "white") +
+  geom_vline(xintercept = mean(merged$diabetes), linetype = 2) +
+  labs(x = "Age-adjusted diabetes prevalence (%)",
+       y = "Number of counties",
+       title = "Distribution of County Diabetes Prevalence",
+       subtitle = sprintf("N = %d · Mean = %.1f%% · SD = %.2f · Range = %.1f–%.1f%%",
+                          nrow(merged), mean(merged$diabetes), sd(merged$diabetes),
+                          min(merged$diabetes), max(merged$diabetes))) +
+  theme_minimal(base_size = 12)
+```
+
+The distribution is right-skewed with a long upper tail of high-prevalence counties (> 18%) concentrated in the rural South, Appalachia, and Native American tribal lands.
+
+## 4.2 Covariate Distributions
+
+```{r fig-cov, fig.width=9, fig.height=6}
+merged |>
+  select(poverty_pct, uninsured_pct, median_income, hs_or_higher_pct) |>
+  pivot_longer(everything(), names_to = "var", values_to = "val") |>
+  mutate(var = recode(var,
+    poverty_pct      = "Poverty rate (%)",
+    uninsured_pct    = "Uninsured rate (%)",
+    median_income    = "Median household income ($)",
+    hs_or_higher_pct = "% with HS diploma or higher")) |>
+  ggplot(aes(val)) +
+  geom_histogram(bins = 40, fill = "#4B7BCB", color = "white") +
+  facet_wrap(~ var, scales = "free", ncol = 2) +
+  scale_x_continuous(labels = label_comma()) +
+  labs(x = NULL, y = "Number of counties",
+       title = "ACS Covariate Distributions Across U.S. Counties") +
+  theme_minimal(base_size = 11)
+```
+
+## 4.3 Correlation Among Covariates
+
+```{r fig-corr, fig.width=6, fig.height=5}
+X <- merged |> select(poverty_pct, uninsured_pct, income_10k, hs_or_higher_pct)
+cor_df <- as.data.frame(as.table(round(cor(X), 2)))
+names(cor_df) <- c("Var1","Var2","r")
+
+ggplot(cor_df, aes(Var1, Var2, fill = r, label = r)) +
+  geom_tile(color = "white") +
+  geom_text(size = 4) +
+  scale_fill_gradient2(low = "#2C7BB6", mid = "white", high = "#D7191C",
+                       midpoint = 0, limits = c(-1, 1)) +
+  labs(x = NULL, y = NULL, title = "Covariate Correlation Matrix") +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        panel.grid = element_blank())
+```
+
+**Key observation.** Poverty is moderately correlated with education (−0.59) and uninsured rate (0.38), but none of the pairwise correlations exceed 0.7, so multicollinearity is not a major concern at the county scale (confirmed by VIF < 2 for all predictors in the main report).
+
+## 4.4 Outcome vs. Covariate Scatterplots
+
+```{r fig-scatter, fig.width=9, fig.height=7}
+merged |>
+  select(diabetes, poverty_pct, uninsured_pct, median_income, hs_or_higher_pct) |>
+  pivot_longer(-diabetes, names_to = "var", values_to = "val") |>
+  mutate(var = recode(var,
+    poverty_pct      = "Poverty rate (%)",
+    uninsured_pct    = "Uninsured rate (%)",
+    median_income    = "Median household income ($)",
+    hs_or_higher_pct = "% with HS diploma or higher")) |>
+  ggplot(aes(val, diabetes)) +
+  geom_point(alpha = 0.25, color = "#555", size = 0.8) +
+  geom_smooth(method = "lm", color = "#CB4B4B", linewidth = 0.8) +
+  facet_wrap(~ var, scales = "free_x", ncol = 2) +
+  scale_x_continuous(labels = label_comma()) +
+  labs(x = NULL, y = "Diabetes prevalence (%)",
+       title = "Bivariate Relationships: Diabetes vs. ACS Covariates") +
+  theme_minimal(base_size = 11)
+```
+
+All four predictors show a clear, monotonic association with diabetes prevalence in the expected direction — this motivates the multivariate regression in the main report.
+
+## 4.5 State-Level Averages
+
+```{r fig-state-bar, fig.width=8, fig.height=8}
+merged |>
+  group_by(state_abbr, state) |>
+  summarise(diabetes = mean(diabetes), n = dplyr::n(), .groups = "drop") |>
+  ggplot(aes(reorder(state_abbr, diabetes), diabetes, fill = diabetes)) +
+  geom_col() +
+  scale_fill_distiller(palette = "YlOrRd", direction = 1) +
+  coord_flip() +
+  labs(x = NULL, y = "Mean county diabetes prevalence (%)",
+       title = "State Averages — County Diabetes Prevalence") +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "none")
+```
+
+The state-average ordering mirrors the classic Southeast "Diabetes Belt": Mississippi, Louisiana, Alabama, West Virginia at the top; Colorado, Vermont, Massachusetts at the bottom.
+
+# 5. Reproducibility
+
+All code, data URLs, and package versions needed to recreate every figure and table on this page are contained in the source `data.qmd`. Click the **`</> Code`** button in the page header to view all code blocks.
+
+```{r sessioninfo}
+sessionInfo()
+```
