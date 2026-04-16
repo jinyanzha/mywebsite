@@ -154,6 +154,8 @@ merged |>
   knitr::kable(digits = 1)
 ```
 
+**Interpretation.** The top-burden counties fall into three geographically distinct clusters: (i) Native American reservations in the **Northern Plains** (South Dakota's Oglala Lakota and Todd counties), (ii) predominantly Hispanic **border counties in South Texas** (Presidio, Zavala, Dimmit, Starr), and (iii) the **Mississippi Delta and Alabama Black Belt** (Holmes MS, East Carroll LA, Greene and Perry AL). All share extreme poverty rates (31–56%) and educational attainment well below the national median.
+
 ```{r bottom}
 #| tbl-cap: "Ten U.S. counties with the lowest age-adjusted diabetes prevalence."
 merged |>
@@ -167,7 +169,7 @@ merged |>
   knitr::kable(digits = 1)
 ```
 
-**Interpretation.** The top-burden counties fall into three geographically distinct clusters: (i) Native American reservations in the **Northern Plains** (South Dakota's Oglala Lakota and Todd counties), (ii) predominantly Hispanic **border counties in South Texas** (Presidio, Zavala, Dimmit, Starr), and (iii) the **Mississippi Delta and Alabama Black Belt** (Holmes MS, East Carroll LA, Greene and Perry AL). All share extreme poverty rates (31–56%) and educational attainment well below the national median. The lowest-burden counties, in contrast, are overwhelmingly **wealthy Mountain West resort and university counties** (Colorado's Douglas, Pitkin, Boulder; New Mexico's Los Alamos; Vermont's Chittenden) with poverty below 11% and near-universal high-school completion (> 95%). This striking spatial pattern motivates both the choropleth maps and the regression analysis that follow.
+**Interpretation.** The lowest-burden counties are overwhelmingly **wealthy Mountain West resort and university counties** (Colorado's Douglas, Pitkin, Boulder; New Mexico's Los Alamos; Vermont's Chittenden) with poverty below 11% and near-universal high-school completion (> 95%). This striking contrast with the top-burden counties — a nearly four-fold difference in diabetes prevalence paired with an order-of-magnitude gap in poverty — motivates both the choropleth maps and the regression analysis that follow.
 
 ## State-level overview map
 
