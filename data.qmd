@@ -155,7 +155,7 @@ data.frame(
 ) |> knitr::kable()
 ```
 
-The ~1-county attrition comes from (a) the national aggregate row in PLACES (FIPS = "US"), (b) a handful of small counties with missing ACS estimates (usually Alaska boroughs).
+The ~1-county attrition comes from (a) the national aggregate row in PLACES (FIPS = "US"), which has no corresponding ACS county GEOID, and (b) occasional small or newly-redrawn geographic units where the PLACES locationid does not match any ACS GEOID.
 
 ## 3.3 Variable Transformations
 

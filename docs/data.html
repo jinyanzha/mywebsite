@@ -466,7 +466,7 @@ Census ACS API ─┘
 </table>
 </div>
 </div>
-<p>The ~1-county attrition comes from (a) the national aggregate row in PLACES (FIPS = “US”), (b) a handful of small counties with missing ACS estimates (usually Alaska boroughs).</p>
+<p>The ~1-county attrition comes from (a) the national aggregate row in PLACES (FIPS = “US”), which has no corresponding ACS county GEOID, and (b) occasional small or newly-redrawn geographic units where the PLACES locationid does not match any ACS GEOID.</p>
 </section>
 <section id="variable-transformations" class="level2">
 <h2 class="anchored" data-anchor-id="variable-transformations">3.3 Variable Transformations</h2>
@@ -1314,7 +1314,7 @@ loaded via a namespace (and not attached):
 <span id="cb22-155"><a href="#cb22-155" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span> knitr<span class="sc">::</span><span class="fu">kable</span>()</span>
 <span id="cb22-156"><a href="#cb22-156" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb22-157"><a href="#cb22-157" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb22-158"><a href="#cb22-158" aria-hidden="true" tabindex="-1"></a>The ~1-county attrition comes from (a) the national aggregate row in PLACES (FIPS = "US"), (b) a handful of small counties with missing ACS estimates (usually Alaska boroughs).</span>
+<span id="cb22-158"><a href="#cb22-158" aria-hidden="true" tabindex="-1"></a>The ~1-county attrition comes from (a) the national aggregate row in PLACES (FIPS = "US"), which has no corresponding ACS county GEOID, and (b) occasional small or newly-redrawn geographic units where the PLACES locationid does not match any ACS GEOID.</span>
 <span id="cb22-159"><a href="#cb22-159" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb22-160"><a href="#cb22-160" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3.3 Variable Transformations</span></span>
 <span id="cb22-161"><a href="#cb22-161" aria-hidden="true" tabindex="-1"></a></span>

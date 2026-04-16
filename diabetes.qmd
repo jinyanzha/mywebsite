@@ -235,7 +235,7 @@ knitr::kable(data.frame(Variable = names(vifs), VIF = round(vifs, 2)),
              caption = "Variance Inflation Factors")
 ```
 
-Correlations are moderate and all VIFs are below 5, so a standard multivariate regression is well-identified at county scale.
+Pairwise correlations among the four covariates are all below 0.6 in absolute value, and variance-inflation factors are all below 2 — well under the conventional multicollinearity threshold of 5. A standard multivariate regression is therefore well-identified at the county scale.
 
 ## 4.2 Primary Model: Diabetes ~ Socioeconomic Covariates
 
@@ -315,7 +315,7 @@ cat(sprintf("\nMoran's I = %.3f (p = %.3g)\n",
 
 # 6. Discussion
 
-**A clear "Diabetes Belt".** County-level prevalence is far from randomly distributed: the highest-burden counties concentrate in the Mississippi Delta, the rural Southeast, Appalachia, and tribal lands in the Southwest, while the lowest-prevalence counties cluster in the Mountain West and urban Northeast. This pattern reproduces the well-established "Diabetes Belt" first described by the CDC in 2011, now updated with the 2020 PLACES release, which provides complete county-level coverage across all 50 states and DC.
+**A clear "Diabetes Belt".** County-level prevalence is far from randomly distributed: the highest-burden counties concentrate in the Mississippi Delta, the rural Southeast, Appalachia, Native American reservations in the Northern Plains (e.g., Oglala Lakota and Todd counties in South Dakota), and predominantly Hispanic border counties of South Texas (e.g., Presidio, Zavala, Dimmit). The lowest-prevalence counties cluster in the Mountain West (Colorado, Wyoming) and northern New England (Vermont, New Hampshire). This pattern reproduces the well-established "Diabetes Belt" first described by the CDC in 2011, now updated with the 2020 PLACES release, which provides complete county-level coverage across all 50 states and DC.
 
 **Socioeconomic determinants matter — and the magnitude is substantial.** The multivariate regression shows that each standard-deviation increase in county poverty rate or uninsured rate is associated with a meaningful increase in diabetes prevalence, while higher educational attainment (share of adults with a high-school diploma or higher) is strongly protective. Median household income, by contrast, has no significant independent effect once poverty and education are held constant — its bivariate signal is absorbed by those more specific structural measures. With N ≈ 3,000 counties the estimates are highly statistically precise, and together the four ACS indicators explain roughly 78% of the variance in county diabetes prevalence (Adjusted R² above).
 
@@ -323,7 +323,7 @@ cat(sprintf("\nMoran's I = %.3f (p = %.3g)\n",
 
 **Spatial autocorrelation beyond covariates.** A highly significant Moran's I confirms that geographic clustering persists beyond what socioeconomic covariates explain, indicating additional regional factors — food environment, climate, healthcare-provider density, cultural dietary patterns, and historical policy legacies — that a single-year cross-sectional ACS model cannot capture.
 
-**Limitations.** (i) PLACES estimates are model-based small-area projections from BRFSS and inherit any BRFSS measurement error; (ii) cross-sectional design precludes causal interpretation; (iii) Alaska and Hawaii were excluded from spatial analyses due to discontinuous adjacency; (iv) within-county heterogeneity (urban/rural, racial composition) is masked by aggregation.
+**Limitations.** (i) PLACES estimates are model-based small-area projections from BRFSS and inherit any BRFSS measurement error; (ii) cross-sectional design precludes causal interpretation; (iii) Alaska and Hawaii are retained in the state-level overview map (via inset placement) but excluded from the county choropleth and the Moran's I analysis because they are not adjacent to the contiguous 48 states; (iv) within-county heterogeneity (urban/rural, racial composition) is masked by aggregation.
 
 **Future directions.** Adding the USDA Food Environment Atlas (supermarket access, fast-food density), CDC obesity prevalence (as a mediator), and race-stratified analyses would further dissect the structural pathways. A spatial-lag or spatial-error regression (e.g. `spatialreg::errorsarlm()`) would formally incorporate the residual spatial autocorrelation identified by Moran's I.
 
