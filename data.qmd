@@ -128,11 +128,69 @@ counties_sf <- counties(cb = TRUE, resolution = "20m", year = 2021) |>
 cat("County polygons (continental US):", nrow(counties_sf), "\n")
 ```
 
-# 3. Data Cleaning and Merging
+# 3. Data Cleaning and Processing
 
-## 3.1 Merge on 5-digit FIPS
+Every cleaning step below is a deliberate, documented decision. The goal is a single tidy analytic dataset where each row is one U.S. county and each column is either the outcome (diabetes prevalence) or a structural covariate.
 
-Both PLACES and ACS use 5-digit county FIPS (`SSCCC`, where `SS` is state and `CCC` is county). We merge with an `inner_join`, then drop any row missing any covariate.
+## 3.1 Type Conversion
+
+The Socrata and Census APIs return JSON arrays in which every value — even numeric ones — arrives as a **character string**. Before any arithmetic, we coerce the outcome and covariates to `numeric`:
+
+```{r types, eval=FALSE}
+# PLACES outcome
+places$diabetes <- as.numeric(places$data_value)
+
+# ACS covariates (same for all four)
+for (v in c("poverty_pct","uninsured_pct","median_income","hs_or_higher_pct"))
+  acs[[v]] <- as.numeric(acs[[v]])
+```
+
+Without this step, `mean()` and `cor()` silently return errors, and `ggplot` treats the values as discrete categories.
+
+## 3.2 Long-to-Wide Format Decisions
+
+The **PLACES raw download arrives in long format** — one row per county × measure × estimate type. A single county can appear dozens of times (once for each of ~40 measures: diabetes, hypertension, obesity, etc.). We do two things at once:
+
+1. **Filter** to the single row per county that corresponds to `measureid = 'DIABETES'` AND `datavaluetypeid = 'AgeAdjPrv'` (age-adjusted prevalence, not crude).
+2. **Select and rename** only the fields we need, producing a compact **wide-by-county** table ready for joining.
+
+```{r tidy-places, eval=FALSE}
+places <- places_raw |>
+  transmute(state = statedesc, state_abbr = stateabbr,
+            county = locationname, fips = locationid,
+            diabetes = as.numeric(data_value))
+```
+
+The **ACS raw download arrives in long format by default** (one row per `(county, variable)`), but the Census API's `get=` parameter lets us request multiple variables in a single call, which the server returns as a **wide** table (one row per county, one column per variable). We rename the cryptic codes (`S1701_C03_001E` → `poverty_pct`, etc.) immediately so the downstream code is self-documenting.
+
+## 3.3 Missing Data and Census "Jam Values"
+
+The Census Bureau uses **special sentinel negative values** — the so-called "jam values" — to encode several kinds of unreported data (suppressed for confidentiality, insufficient sample, non-applicable geography). The most common is **`-666666666`**, but several other large negatives exist.
+
+These jam values are **not missing in R's sense**: they are valid numeric entries that would silently poison every mean, SD, and correlation if left in. For example, Texas's Loving County (population ~60) had its median income reported as `-666666666` in our raw ACS pull — a single such row is enough to inflate the apparent range of median income to "−\$666M to \$156k" and drive the correlation between income and every other covariate to near zero.
+
+We convert any negative jam value to `NA` before computing any statistics:
+
+```{r jam, eval=FALSE}
+for (v in c("poverty_pct","uninsured_pct","median_income","hs_or_higher_pct"))
+  acs[[v]][acs[[v]] < 0] <- NA
+```
+
+After this step, the four covariates have plausible ranges (e.g., median income: \$17k–\$157k; poverty: 1%–59%) and the correlation matrix in §4.3 looks as expected.
+
+## 3.4 Geographic Filtering
+
+Several filters exclude geographies that are either not U.S. counties or incompatible with the spatial model:
+
+| Filter | Where applied | Why |
+|---|---|---|
+| Drop `state = "United States"` row | PLACES | It is the national aggregate, not a county |
+| Drop `STATEFP %in% c("60","66","69","72","78")` | TIGER (map + Moran's I) | American Samoa, Guam, Northern Mariana Islands, Puerto Rico, U.S. Virgin Islands — not in ACS county universe |
+| Additionally drop `STATEFP %in% c("02","15")` | Moran's I only | Alaska and Hawaii have no land adjacency to the contiguous 48 states, so the queen-contiguity weights matrix would treat them as isolated islands with no neighbors |
+
+## 3.5 Merge on 5-digit County FIPS
+
+Both PLACES and ACS use the same 5-digit county FIPS code (`SSCCC`, where `SS` is the state FIPS and `CCC` is the county FIPS). We join on this key with an `inner_join`, then drop any row missing any covariate:
 
 ```{r merge}
 merged <- places |>
@@ -140,32 +198,38 @@ merged <- places |>
   filter(!is.na(diabetes), !is.na(poverty_pct), !is.na(uninsured_pct),
          !is.na(median_income), !is.na(hs_or_higher_pct)) |>
   mutate(income_10k = median_income / 10000)
-
-cat("Final analytic N:", nrow(merged), "\n")
-cat("States in analytic dataset:", length(unique(merged$state_abbr)), "\n")
 ```
 
-## 3.2 Row Losses (Data Provenance)
+The complete-case filter is **pairwise on the analytic set**, not imputation-based, because the fraction of missing counties is tiny (see the loss accounting below) and the missingness is plausibly MCAR (mostly sparsely-populated counties whose estimates fall below Census's reporting threshold).
+
+## 3.6 Row-Loss Accounting
 
 ```{r losses}
 n_places <- nrow(places)
 n_acs    <- nrow(acs)
 n_merged <- nrow(merged)
 data.frame(
-  Step = c("PLACES raw (counties)",
-           "ACS raw (counties)",
+  Step = c("PLACES raw (counties + US aggregate)",
+           "ACS raw (all U.S. counties)",
            "Inner join on FIPS + complete-case filter",
            "Final analytic dataset"),
   N = c(n_places, n_acs, n_merged, n_merged)
 ) |> knitr::kable()
 ```
 
-The ~1-county attrition comes from (a) the national aggregate row in PLACES (FIPS = "US"), which has no corresponding ACS county GEOID, and (b) occasional small or newly-redrawn geographic units where the PLACES locationid does not match any ACS GEOID.
+The single row of attrition from PLACES → merged is the national aggregate (`FIPS = "US"`), which has no corresponding ACS county GEOID. The larger gap between ACS raw (~3,220 counties) and merged (3,143) reflects counties that exist in the Census universe but are missing from PLACES — typically because their BRFSS sample sizes were too small for a reliable model-based estimate that release year.
 
-## 3.3 Variable Transformations
+## 3.7 Variable Transformations
 
-- `income_10k` — median income rescaled to \$10k units for interpretable regression coefficients
-- z-standardized versions of all covariates created downstream in the main report so coefficients are directly comparable
+Two transformations happen in this notebook; a third happens in the main report.
+
+| Variable | Transformation | Rationale |
+|---|---|---|
+| `income_10k` | `median_income / 10000` | Reports regression coefficients in "per \$10k" units instead of "per \$1" — more interpretable |
+| (all four covariates) | z-score standardization in the main report | `(x − mean) / sd`; makes the four β coefficients directly comparable across variables with different units (%, \$, %, %) |
+| Polygon simplification | `rmapshaper::ms_simplify(keep = 0.3)` on TIGER shapefile | Reduces vertex count to 30% for faster interactive map rendering; visual difference is negligible at country scale |
+
+No outcome-side transformation is applied: the age-adjusted diabetes prevalence is already the reportable quantity, and the distribution (right-skewed but not log-normal; see §4.1) is compatible with ordinary least squares assumptions without a log or square-root transform.
 
 # 4. Exploratory Data Analysis
 

@@ -73,8 +73,8 @@
     "objectID": "data.html#variable-transformations",
     "href": "data.html#variable-transformations",
     "title": "About the Data",
-    "section": "3.3 Variable Transformations",
-    "text": "3.3 Variable Transformations\n\nincome_10k — median income rescaled to $10k units for interpretable regression coefficients\nz-standardized versions of all covariates created downstream in the main report so coefficients are directly comparable"
+    "section": "3.7 Variable Transformations",
+    "text": "3.7 Variable Transformations\nTwo transformations happen in this notebook; a third happens in the main report.\n\n\n\n\n\n\n\n\nVariable\nTransformation\nRationale\n\n\n\n\nincome_10k\nmedian_income / 10000\nReports regression coefficients in “per $10k” units instead of “per $1” — more interpretable\n\n\n(all four covariates)\nz-score standardization in the main report\n(x − mean) / sd; makes the four β coefficients directly comparable across variables with different units (%, $, %, %)\n\n\nPolygon simplification\nrmapshaper::ms_simplify(keep = 0.3) on TIGER shapefile\nReduces vertex count to 30% for faster interactive map rendering; visual difference is negligible at country scale\n\n\n\nNo outcome-side transformation is applied: the age-adjusted diabetes prevalence is already the reportable quantity, and the distribution (right-skewed but not log-normal; see §4.1) is compatible with ordinary least squares assumptions without a log or square-root transform."
   },
   {
     "objectID": "data.html#outcome-distribution",
@@ -208,5 +208,47 @@
     "title": "County-Level Spatial Analysis of Diabetes Prevalence in the United States",
     "section": "Spatial autocorrelation (Moran’s I)",
     "text": "Spatial autocorrelation (Moran’s I)\n\n\nCode\ngeo &lt;- counties_sf |&gt;\n  left_join(merged, by = c(\"GEOID\" = \"fips\")) |&gt;\n  filter(!is.na(diabetes))\n\nnb &lt;- poly2nb(geo, queen = TRUE)\nlw &lt;- nb2listw(nb, style = \"W\", zero.policy = TRUE)\nmi &lt;- moran.test(geo$diabetes, lw, zero.policy = TRUE)\n\ndata.frame(\n  Quantity = c(\"Moran's I statistic\",\n               \"Expected I under null\",\n               \"Variance\",\n               \"Standardized z-score\",\n               \"p-value\"),\n  Value = c(sprintf(\"%.3f\", mi$estimate[1]),\n            sprintf(\"%.5f\", mi$estimate[2]),\n            sprintf(\"%.5f\", mi$estimate[3]),\n            sprintf(\"%.2f\", mi$statistic),\n            format.pval(mi$p.value, digits = 2, eps = 1e-16))\n) |&gt; knitr::kable()\n\n\n\nGlobal Moran’s I test for spatial autocorrelation in county diabetes prevalence, continental 48 states with queen-contiguity weights.\n\n\nQuantity\nValue\n\n\n\n\nMoran’s I statistic\n0.680\n\n\nExpected I under null\n-0.00032\n\n\nVariance\n0.00011\n\n\nStandardized z-score\n63.47\n\n\np-value\n&lt;1e-16\n\n\n\n\n\nInterpretation. Moran’s I is large and highly significantly positive, confirming that neighboring counties tend to have similar diabetes-prevalence values far beyond what random chance would produce. Even after the four ACS covariates have absorbed most of the linear variance (Adj R² = 0.78), the geography itself still carries additional signal — regional factors not captured by the model (food environment, climate, health-system density, cultural diet, state-level Medicaid policy) leave residual spatial clustering that a future spatial-lag or spatial-error regression could formally absorb."
+  },
+  {
+    "objectID": "data.html#type-conversion",
+    "href": "data.html#type-conversion",
+    "title": "About the Data",
+    "section": "3.1 Type Conversion",
+    "text": "3.1 Type Conversion\nThe Socrata and Census APIs return JSON arrays in which every value — even numeric ones — arrives as a character string. Before any arithmetic, we coerce the outcome and covariates to numeric:\n\n\nCode\n# PLACES outcome\nplaces$diabetes &lt;- as.numeric(places$data_value)\n\n# ACS covariates (same for all four)\nfor (v in c(\"poverty_pct\",\"uninsured_pct\",\"median_income\",\"hs_or_higher_pct\"))\n  acs[[v]] &lt;- as.numeric(acs[[v]])\n\n\nWithout this step, mean() and cor() silently return errors, and ggplot treats the values as discrete categories."
+  },
+  {
+    "objectID": "data.html#long-to-wide-format-decisions",
+    "href": "data.html#long-to-wide-format-decisions",
+    "title": "About the Data",
+    "section": "3.2 Long-to-Wide Format Decisions",
+    "text": "3.2 Long-to-Wide Format Decisions\nThe PLACES raw download arrives in long format — one row per county × measure × estimate type. A single county can appear dozens of times (once for each of ~40 measures: diabetes, hypertension, obesity, etc.). We do two things at once:\n\nFilter to the single row per county that corresponds to measureid = 'DIABETES' AND datavaluetypeid = 'AgeAdjPrv' (age-adjusted prevalence, not crude).\nSelect and rename only the fields we need, producing a compact wide-by-county table ready for joining.\n\n\n\nCode\nplaces &lt;- places_raw |&gt;\n  transmute(state = statedesc, state_abbr = stateabbr,\n            county = locationname, fips = locationid,\n            diabetes = as.numeric(data_value))\n\n\nThe ACS raw download arrives in long format by default (one row per (county, variable)), but the Census API’s get= parameter lets us request multiple variables in a single call, which the server returns as a wide table (one row per county, one column per variable). We rename the cryptic codes (S1701_C03_001E → poverty_pct, etc.) immediately so the downstream code is self-documenting."
+  },
+  {
+    "objectID": "data.html#missing-data-and-census-jam-values",
+    "href": "data.html#missing-data-and-census-jam-values",
+    "title": "About the Data",
+    "section": "3.3 Missing Data and Census “Jam Values”",
+    "text": "3.3 Missing Data and Census “Jam Values”\nThe Census Bureau uses special sentinel negative values — the so-called “jam values” — to encode several kinds of unreported data (suppressed for confidentiality, insufficient sample, non-applicable geography). The most common is -666666666, but several other large negatives exist.\nThese jam values are not missing in R’s sense: they are valid numeric entries that would silently poison every mean, SD, and correlation if left in. For example, Texas’s Loving County (population ~60) had its median income reported as -666666666 in our raw ACS pull — a single such row is enough to inflate the apparent range of median income to “−$666M to $156k” and drive the correlation between income and every other covariate to near zero.\nWe convert any negative jam value to NA before computing any statistics:\n\n\nCode\nfor (v in c(\"poverty_pct\",\"uninsured_pct\",\"median_income\",\"hs_or_higher_pct\"))\n  acs[[v]][acs[[v]] &lt; 0] &lt;- NA\n\n\nAfter this step, the four covariates have plausible ranges (e.g., median income: $17k–$157k; poverty: 1%–59%) and the correlation matrix in §4.3 looks as expected."
+  },
+  {
+    "objectID": "data.html#geographic-filtering",
+    "href": "data.html#geographic-filtering",
+    "title": "About the Data",
+    "section": "3.4 Geographic Filtering",
+    "text": "3.4 Geographic Filtering\nSeveral filters exclude geographies that are either not U.S. counties or incompatible with the spatial model:\n\n\n\n\n\n\n\n\nFilter\nWhere applied\nWhy\n\n\n\n\nDrop state = \"United States\" row\nPLACES\nIt is the national aggregate, not a county\n\n\nDrop STATEFP %in% c(\"60\",\"66\",\"69\",\"72\",\"78\")\nTIGER (map + Moran’s I)\nAmerican Samoa, Guam, Northern Mariana Islands, Puerto Rico, U.S. Virgin Islands — not in ACS county universe\n\n\nAdditionally drop STATEFP %in% c(\"02\",\"15\")\nMoran’s I only\nAlaska and Hawaii have no land adjacency to the contiguous 48 states, so the queen-contiguity weights matrix would treat them as isolated islands with no neighbors"
+  },
+  {
+    "objectID": "data.html#merge-on-5-digit-county-fips",
+    "href": "data.html#merge-on-5-digit-county-fips",
+    "title": "About the Data",
+    "section": "3.5 Merge on 5-digit County FIPS",
+    "text": "3.5 Merge on 5-digit County FIPS\nBoth PLACES and ACS use the same 5-digit county FIPS code (SSCCC, where SS is the state FIPS and CCC is the county FIPS). We join on this key with an inner_join, then drop any row missing any covariate:\n\n\nCode\nmerged &lt;- places |&gt;\n  inner_join(acs, by = c(\"fips\" = \"GEOID\")) |&gt;\n  filter(!is.na(diabetes), !is.na(poverty_pct), !is.na(uninsured_pct),\n         !is.na(median_income), !is.na(hs_or_higher_pct)) |&gt;\n  mutate(income_10k = median_income / 10000)\n\n\nThe complete-case filter is pairwise on the analytic set, not imputation-based, because the fraction of missing counties is tiny (see the loss accounting below) and the missingness is plausibly MCAR (mostly sparsely-populated counties whose estimates fall below Census’s reporting threshold)."
+  },
+  {
+    "objectID": "data.html#row-loss-accounting",
+    "href": "data.html#row-loss-accounting",
+    "title": "About the Data",
+    "section": "3.6 Row-Loss Accounting",
+    "text": "3.6 Row-Loss Accounting\n\n\nCode\nn_places &lt;- nrow(places)\nn_acs    &lt;- nrow(acs)\nn_merged &lt;- nrow(merged)\ndata.frame(\n  Step = c(\"PLACES raw (counties + US aggregate)\",\n           \"ACS raw (all U.S. counties)\",\n           \"Inner join on FIPS + complete-case filter\",\n           \"Final analytic dataset\"),\n  N = c(n_places, n_acs, n_merged, n_merged)\n) |&gt; knitr::kable()\n\n\n\n\n\nStep\nN\n\n\n\n\nPLACES raw (counties + US aggregate)\n3144\n\n\nACS raw (all U.S. counties)\n3221\n\n\nInner join on FIPS + complete-case filter\n3142\n\n\nFinal analytic dataset\n3142\n\n\n\n\n\nThe single row of attrition from PLACES → merged is the national aggregate (FIPS = \"US\"), which has no corresponding ACS county GEOID. The larger gap between ACS raw (~3,220 counties) and merged (3,143) reflects counties that exist in the Census universe but are missing from PLACES — typically because their BRFSS sample sizes were too small for a reliable model-based estimate that release year."
   }
 ]

@@ -163,11 +163,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#u.s.-census-acs-covariates" id="toc-u.s.-census-acs-covariates" class="nav-link" data-scroll-target="#u.s.-census-acs-covariates">2.2 U.S. Census ACS — Covariates</a></li>
   <li><a href="#tigerline-county-boundaries" id="toc-tigerline-county-boundaries" class="nav-link" data-scroll-target="#tigerline-county-boundaries">2.3 TIGER/Line County Boundaries</a></li>
   </ul></li>
-  <li><a href="#data-cleaning-and-merging" id="toc-data-cleaning-and-merging" class="nav-link" data-scroll-target="#data-cleaning-and-merging">3. Data Cleaning and Merging</a>
+  <li><a href="#data-cleaning-and-processing" id="toc-data-cleaning-and-processing" class="nav-link" data-scroll-target="#data-cleaning-and-processing">3. Data Cleaning and Processing</a>
   <ul class="collapse">
-  <li><a href="#merge-on-5-digit-fips" id="toc-merge-on-5-digit-fips" class="nav-link" data-scroll-target="#merge-on-5-digit-fips">3.1 Merge on 5-digit FIPS</a></li>
-  <li><a href="#row-losses-data-provenance" id="toc-row-losses-data-provenance" class="nav-link" data-scroll-target="#row-losses-data-provenance">3.2 Row Losses (Data Provenance)</a></li>
-  <li><a href="#variable-transformations" id="toc-variable-transformations" class="nav-link" data-scroll-target="#variable-transformations">3.3 Variable Transformations</a></li>
+  <li><a href="#type-conversion" id="toc-type-conversion" class="nav-link" data-scroll-target="#type-conversion">3.1 Type Conversion</a></li>
+  <li><a href="#long-to-wide-format-decisions" id="toc-long-to-wide-format-decisions" class="nav-link" data-scroll-target="#long-to-wide-format-decisions">3.2 Long-to-Wide Format Decisions</a></li>
+  <li><a href="#missing-data-and-census-jam-values" id="toc-missing-data-and-census-jam-values" class="nav-link" data-scroll-target="#missing-data-and-census-jam-values">3.3 Missing Data and Census “Jam Values”</a></li>
+  <li><a href="#geographic-filtering" id="toc-geographic-filtering" class="nav-link" data-scroll-target="#geographic-filtering">3.4 Geographic Filtering</a></li>
+  <li><a href="#merge-on-5-digit-county-fips" id="toc-merge-on-5-digit-county-fips" class="nav-link" data-scroll-target="#merge-on-5-digit-county-fips">3.5 Merge on 5-digit County FIPS</a></li>
+  <li><a href="#row-loss-accounting" id="toc-row-loss-accounting" class="nav-link" data-scroll-target="#row-loss-accounting">3.6 Row-Loss Accounting</a></li>
+  <li><a href="#variable-transformations" id="toc-variable-transformations" class="nav-link" data-scroll-target="#variable-transformations">3.7 Variable Transformations</a></li>
   </ul></li>
   <li><a href="#exploratory-data-analysis" id="toc-exploratory-data-analysis" class="nav-link" data-scroll-target="#exploratory-data-analysis">4. Exploratory Data Analysis</a>
   <ul class="collapse">
@@ -398,36 +402,109 @@ Census ACS API ─┘
 </div>
 </section>
 </section>
-<section id="data-cleaning-and-merging" class="level1">
-<h1>3. Data Cleaning and Merging</h1>
-<section id="merge-on-5-digit-fips" class="level2">
-<h2 class="anchored" data-anchor-id="merge-on-5-digit-fips">3.1 Merge on 5-digit FIPS</h2>
-<p>Both PLACES and ACS use 5-digit county FIPS (<code>SSCCC</code>, where <code>SS</code> is state and <code>CCC</code> is county). We merge with an <code>inner_join</code>, then drop any row missing any covariate.</p>
+<section id="data-cleaning-and-processing" class="level1">
+<h1>3. Data Cleaning and Processing</h1>
+<p>Every cleaning step below is a deliberate, documented decision. The goal is a single tidy analytic dataset where each row is one U.S. county and each column is either the outcome (diabetes prevalence) or a structural covariate.</p>
+<section id="type-conversion" class="level2">
+<h2 class="anchored" data-anchor-id="type-conversion">3.1 Type Conversion</h2>
+<p>The Socrata and Census APIs return JSON arrays in which every value — even numeric ones — arrives as a <strong>character string</strong>. Before any arithmetic, we coerce the outcome and covariates to <code>numeric</code>:</p>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>merged <span class="ot">&lt;-</span> places <span class="sc">|&gt;</span></span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(acs, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"fips"</span> <span class="ot">=</span> <span class="st">"GEOID"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(diabetes), <span class="sc">!</span><span class="fu">is.na</span>(poverty_pct), <span class="sc">!</span><span class="fu">is.na</span>(uninsured_pct),</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>         <span class="sc">!</span><span class="fu">is.na</span>(median_income), <span class="sc">!</span><span class="fu">is.na</span>(hs_or_higher_pct)) <span class="sc">|&gt;</span></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">income_10k =</span> median_income <span class="sc">/</span> <span class="dv">10000</span>)</span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Final analytic N:"</span>, <span class="fu">nrow</span>(merged), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># PLACES outcome</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>places<span class="sc">$</span>diabetes <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(places<span class="sc">$</span>data_value)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co"># ACS covariates (same for all four)</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (v <span class="cf">in</span> <span class="fu">c</span>(<span class="st">"poverty_pct"</span>,<span class="st">"uninsured_pct"</span>,<span class="st">"median_income"</span>,<span class="st">"hs_or_higher_pct"</span>))</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  acs[[v]] <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(acs[[v]])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
-<div class="cell-output cell-output-stdout">
-<pre><code>Final analytic N: 3142 </code></pre>
 </div>
+<p>Without this step, <code>mean()</code> and <code>cor()</code> silently return errors, and <code>ggplot</code> treats the values as discrete categories.</p>
+</section>
+<section id="long-to-wide-format-decisions" class="level2">
+<h2 class="anchored" data-anchor-id="long-to-wide-format-decisions">3.2 Long-to-Wide Format Decisions</h2>
+<p>The <strong>PLACES raw download arrives in long format</strong> — one row per county × measure × estimate type. A single county can appear dozens of times (once for each of ~40 measures: diabetes, hypertension, obesity, etc.). We do two things at once:</p>
+<ol type="1">
+<li><strong>Filter</strong> to the single row per county that corresponds to <code>measureid = 'DIABETES'</code> AND <code>datavaluetypeid = 'AgeAdjPrv'</code> (age-adjusted prevalence, not crude).</li>
+<li><strong>Select and rename</strong> only the fields we need, producing a compact <strong>wide-by-county</strong> table ready for joining.</li>
+</ol>
+<div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"States in analytic dataset:"</span>, <span class="fu">length</span>(<span class="fu">unique</span>(merged<span class="sc">$</span>state_abbr)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>places <span class="ot">&lt;-</span> places_raw <span class="sc">|&gt;</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">transmute</span>(<span class="at">state =</span> statedesc, <span class="at">state_abbr =</span> stateabbr,</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>            <span class="at">county =</span> locationname, <span class="at">fips =</span> locationid,</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>            <span class="at">diabetes =</span> <span class="fu">as.numeric</span>(data_value))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
-<div class="cell-output cell-output-stdout">
-<pre><code>States in analytic dataset: 51 </code></pre>
 </div>
-</div>
+<p>The <strong>ACS raw download arrives in long format by default</strong> (one row per <code>(county, variable)</code>), but the Census API’s <code>get=</code> parameter lets us request multiple variables in a single call, which the server returns as a <strong>wide</strong> table (one row per county, one column per variable). We rename the cryptic codes (<code>S1701_C03_001E</code> → <code>poverty_pct</code>, etc.) immediately so the downstream code is self-documenting.</p>
 </section>
-<section id="row-losses-data-provenance" class="level2">
-<h2 class="anchored" data-anchor-id="row-losses-data-provenance">3.2 Row Losses (Data Provenance)</h2>
+<section id="missing-data-and-census-jam-values" class="level2">
+<h2 class="anchored" data-anchor-id="missing-data-and-census-jam-values">3.3 Missing Data and Census “Jam Values”</h2>
+<p>The Census Bureau uses <strong>special sentinel negative values</strong> — the so-called “jam values” — to encode several kinds of unreported data (suppressed for confidentiality, insufficient sample, non-applicable geography). The most common is <strong><code>-666666666</code></strong>, but several other large negatives exist.</p>
+<p>These jam values are <strong>not missing in R’s sense</strong>: they are valid numeric entries that would silently poison every mean, SD, and correlation if left in. For example, Texas’s Loving County (population ~60) had its median income reported as <code>-666666666</code> in our raw ACS pull — a single such row is enough to inflate the apparent range of median income to “−$666M to $156k” and drive the correlation between income and every other covariate to near zero.</p>
+<p>We convert any negative jam value to <code>NA</code> before computing any statistics:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (v <span class="cf">in</span> <span class="fu">c</span>(<span class="st">"poverty_pct"</span>,<span class="st">"uninsured_pct"</span>,<span class="st">"median_income"</span>,<span class="st">"hs_or_higher_pct"</span>))</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  acs[[v]][acs[[v]] <span class="sc">&lt;</span> <span class="dv">0</span>] <span class="ot">&lt;-</span> <span class="cn">NA</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>After this step, the four covariates have plausible ranges (e.g., median income: $17k–$157k; poverty: 1%–59%) and the correlation matrix in §4.3 looks as expected.</p>
+</section>
+<section id="geographic-filtering" class="level2">
+<h2 class="anchored" data-anchor-id="geographic-filtering">3.4 Geographic Filtering</h2>
+<p>Several filters exclude geographies that are either not U.S. counties or incompatible with the spatial model:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Filter</th>
+<th>Where applied</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Drop <code>state = "United States"</code> row</td>
+<td>PLACES</td>
+<td>It is the national aggregate, not a county</td>
+</tr>
+<tr class="even">
+<td>Drop <code>STATEFP %in% c("60","66","69","72","78")</code></td>
+<td>TIGER (map + Moran’s I)</td>
+<td>American Samoa, Guam, Northern Mariana Islands, Puerto Rico, U.S. Virgin Islands — not in ACS county universe</td>
+</tr>
+<tr class="odd">
+<td>Additionally drop <code>STATEFP %in% c("02","15")</code></td>
+<td>Moran’s I only</td>
+<td>Alaska and Hawaii have no land adjacency to the contiguous 48 states, so the queen-contiguity weights matrix would treat them as isolated islands with no neighbors</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="merge-on-5-digit-county-fips" class="level2">
+<h2 class="anchored" data-anchor-id="merge-on-5-digit-county-fips">3.5 Merge on 5-digit County FIPS</h2>
+<p>Both PLACES and ACS use the same 5-digit county FIPS code (<code>SSCCC</code>, where <code>SS</code> is the state FIPS and <code>CCC</code> is the county FIPS). We join on this key with an <code>inner_join</code>, then drop any row missing any covariate:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>merged <span class="ot">&lt;-</span> places <span class="sc">|&gt;</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(acs, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"fips"</span> <span class="ot">=</span> <span class="st">"GEOID"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(diabetes), <span class="sc">!</span><span class="fu">is.na</span>(poverty_pct), <span class="sc">!</span><span class="fu">is.na</span>(uninsured_pct),</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>         <span class="sc">!</span><span class="fu">is.na</span>(median_income), <span class="sc">!</span><span class="fu">is.na</span>(hs_or_higher_pct)) <span class="sc">|&gt;</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">income_10k =</span> median_income <span class="sc">/</span> <span class="dv">10000</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+<p>The complete-case filter is <strong>pairwise on the analytic set</strong>, not imputation-based, because the fraction of missing counties is tiny (see the loss accounting below) and the missingness is plausibly MCAR (mostly sparsely-populated counties whose estimates fall below Census’s reporting threshold).</p>
+</section>
+<section id="row-loss-accounting" class="level2">
+<h2 class="anchored" data-anchor-id="row-loss-accounting">3.6 Row-Loss Accounting</h2>
 <div class="cell">
 <details class="code-fold">
 <summary>Code</summary>
@@ -435,8 +512,8 @@ Census ACS API ─┘
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>n_acs    <span class="ot">&lt;-</span> <span class="fu">nrow</span>(acs)</span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>n_merged <span class="ot">&lt;-</span> <span class="fu">nrow</span>(merged)</span>
 <span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(</span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">Step =</span> <span class="fu">c</span>(<span class="st">"PLACES raw (counties)"</span>,</span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>           <span class="st">"ACS raw (counties)"</span>,</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">Step =</span> <span class="fu">c</span>(<span class="st">"PLACES raw (counties + US aggregate)"</span>,</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>           <span class="st">"ACS raw (all U.S. counties)"</span>,</span>
 <span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>           <span class="st">"Inner join on FIPS + complete-case filter"</span>,</span>
 <span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>           <span class="st">"Final analytic dataset"</span>),</span>
 <span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">N =</span> <span class="fu">c</span>(n_places, n_acs, n_merged, n_merged)</span>
@@ -452,11 +529,11 @@ Census ACS API ─┘
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left;">PLACES raw (counties)</td>
+<td style="text-align: left;">PLACES raw (counties + US aggregate)</td>
 <td style="text-align: right;">3144</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">ACS raw (counties)</td>
+<td style="text-align: left;">ACS raw (all U.S. counties)</td>
 <td style="text-align: right;">3221</td>
 </tr>
 <tr class="odd">
@@ -471,14 +548,43 @@ Census ACS API ─┘
 </table>
 </div>
 </div>
-<p>The ~1-county attrition comes from (a) the national aggregate row in PLACES (FIPS = “US”), which has no corresponding ACS county GEOID, and (b) occasional small or newly-redrawn geographic units where the PLACES locationid does not match any ACS GEOID.</p>
+<p>The single row of attrition from PLACES → merged is the national aggregate (<code>FIPS = "US"</code>), which has no corresponding ACS county GEOID. The larger gap between ACS raw (~3,220 counties) and merged (3,143) reflects counties that exist in the Census universe but are missing from PLACES — typically because their BRFSS sample sizes were too small for a reliable model-based estimate that release year.</p>
 </section>
 <section id="variable-transformations" class="level2">
-<h2 class="anchored" data-anchor-id="variable-transformations">3.3 Variable Transformations</h2>
-<ul>
-<li><code>income_10k</code> — median income rescaled to $10k units for interpretable regression coefficients</li>
-<li>z-standardized versions of all covariates created downstream in the main report so coefficients are directly comparable</li>
-</ul>
+<h2 class="anchored" data-anchor-id="variable-transformations">3.7 Variable Transformations</h2>
+<p>Two transformations happen in this notebook; a third happens in the main report.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variable</th>
+<th>Transformation</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>income_10k</code></td>
+<td><code>median_income / 10000</code></td>
+<td>Reports regression coefficients in “per $10k” units instead of “per $1” — more interpretable</td>
+</tr>
+<tr class="even">
+<td>(all four covariates)</td>
+<td>z-score standardization in the main report</td>
+<td><code>(x − mean) / sd</code>; makes the four β coefficients directly comparable across variables with different units (%, $, %, %)</td>
+</tr>
+<tr class="odd">
+<td>Polygon simplification</td>
+<td><code>rmapshaper::ms_simplify(keep = 0.3)</code> on TIGER shapefile</td>
+<td>Reduces vertex count to 30% for faster interactive map rendering; visual difference is negligible at country scale</td>
+</tr>
+</tbody>
+</table>
+<p>No outcome-side transformation is applied: the age-adjusted diabetes prevalence is already the reportable quantity, and the distribution (right-skewed but not log-normal; see §4.1) is compatible with ordinary least squares assumptions without a log or square-root transform.</p>
 </section>
 </section>
 <section id="exploratory-data-analysis" class="level1">
@@ -1416,206 +1522,270 @@ loaded via a namespace (and not attached):
 <span id="cb23-128"><a href="#cb23-128" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"County polygons (continental US):"</span>, <span class="fu">nrow</span>(counties_sf), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
 <span id="cb23-129"><a href="#cb23-129" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb23-130"><a href="#cb23-130" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-131"><a href="#cb23-131" aria-hidden="true" tabindex="-1"></a><span class="fu"># 3. Data Cleaning and Merging</span></span>
+<span id="cb23-131"><a href="#cb23-131" aria-hidden="true" tabindex="-1"></a><span class="fu"># 3. Data Cleaning and Processing</span></span>
 <span id="cb23-132"><a href="#cb23-132" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-133"><a href="#cb23-133" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3.1 Merge on 5-digit FIPS</span></span>
+<span id="cb23-133"><a href="#cb23-133" aria-hidden="true" tabindex="-1"></a>Every cleaning step below is a deliberate, documented decision. The goal is a single tidy analytic dataset where each row is one U.S. county and each column is either the outcome (diabetes prevalence) or a structural covariate.</span>
 <span id="cb23-134"><a href="#cb23-134" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-135"><a href="#cb23-135" aria-hidden="true" tabindex="-1"></a>Both PLACES and ACS use 5-digit county FIPS (<span class="in">`SSCCC`</span>, where <span class="in">`SS`</span> is state and <span class="in">`CCC`</span> is county). We merge with an <span class="in">`inner_join`</span>, then drop any row missing any covariate.</span>
+<span id="cb23-135"><a href="#cb23-135" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3.1 Type Conversion</span></span>
 <span id="cb23-136"><a href="#cb23-136" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-137"><a href="#cb23-137" aria-hidden="true" tabindex="-1"></a><span class="in">```{r merge}</span></span>
-<span id="cb23-138"><a href="#cb23-138" aria-hidden="true" tabindex="-1"></a>merged <span class="ot">&lt;-</span> places <span class="sc">|&gt;</span></span>
-<span id="cb23-139"><a href="#cb23-139" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(acs, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"fips"</span> <span class="ot">=</span> <span class="st">"GEOID"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb23-140"><a href="#cb23-140" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(diabetes), <span class="sc">!</span><span class="fu">is.na</span>(poverty_pct), <span class="sc">!</span><span class="fu">is.na</span>(uninsured_pct),</span>
-<span id="cb23-141"><a href="#cb23-141" aria-hidden="true" tabindex="-1"></a>         <span class="sc">!</span><span class="fu">is.na</span>(median_income), <span class="sc">!</span><span class="fu">is.na</span>(hs_or_higher_pct)) <span class="sc">|&gt;</span></span>
-<span id="cb23-142"><a href="#cb23-142" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">income_10k =</span> median_income <span class="sc">/</span> <span class="dv">10000</span>)</span>
-<span id="cb23-143"><a href="#cb23-143" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-144"><a href="#cb23-144" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Final analytic N:"</span>, <span class="fu">nrow</span>(merged), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
-<span id="cb23-145"><a href="#cb23-145" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"States in analytic dataset:"</span>, <span class="fu">length</span>(<span class="fu">unique</span>(merged<span class="sc">$</span>state_abbr)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb23-137"><a href="#cb23-137" aria-hidden="true" tabindex="-1"></a>The Socrata and Census APIs return JSON arrays in which every value — even numeric ones — arrives as a **character string**. Before any arithmetic, we coerce the outcome and covariates to <span class="in">`numeric`</span>:</span>
+<span id="cb23-138"><a href="#cb23-138" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-139"><a href="#cb23-139" aria-hidden="true" tabindex="-1"></a><span class="in">```{r types, eval=FALSE}</span></span>
+<span id="cb23-140"><a href="#cb23-140" aria-hidden="true" tabindex="-1"></a><span class="co"># PLACES outcome</span></span>
+<span id="cb23-141"><a href="#cb23-141" aria-hidden="true" tabindex="-1"></a>places<span class="sc">$</span>diabetes <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(places<span class="sc">$</span>data_value)</span>
+<span id="cb23-142"><a href="#cb23-142" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-143"><a href="#cb23-143" aria-hidden="true" tabindex="-1"></a><span class="co"># ACS covariates (same for all four)</span></span>
+<span id="cb23-144"><a href="#cb23-144" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (v <span class="cf">in</span> <span class="fu">c</span>(<span class="st">"poverty_pct"</span>,<span class="st">"uninsured_pct"</span>,<span class="st">"median_income"</span>,<span class="st">"hs_or_higher_pct"</span>))</span>
+<span id="cb23-145"><a href="#cb23-145" aria-hidden="true" tabindex="-1"></a>  acs[[v]] <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(acs[[v]])</span>
 <span id="cb23-146"><a href="#cb23-146" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb23-147"><a href="#cb23-147" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-148"><a href="#cb23-148" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3.2 Row Losses (Data Provenance)</span></span>
+<span id="cb23-148"><a href="#cb23-148" aria-hidden="true" tabindex="-1"></a>Without this step, <span class="in">`mean()`</span> and <span class="in">`cor()`</span> silently return errors, and <span class="in">`ggplot`</span> treats the values as discrete categories.</span>
 <span id="cb23-149"><a href="#cb23-149" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-150"><a href="#cb23-150" aria-hidden="true" tabindex="-1"></a><span class="in">```{r losses}</span></span>
-<span id="cb23-151"><a href="#cb23-151" aria-hidden="true" tabindex="-1"></a>n_places <span class="ot">&lt;-</span> <span class="fu">nrow</span>(places)</span>
-<span id="cb23-152"><a href="#cb23-152" aria-hidden="true" tabindex="-1"></a>n_acs    <span class="ot">&lt;-</span> <span class="fu">nrow</span>(acs)</span>
-<span id="cb23-153"><a href="#cb23-153" aria-hidden="true" tabindex="-1"></a>n_merged <span class="ot">&lt;-</span> <span class="fu">nrow</span>(merged)</span>
-<span id="cb23-154"><a href="#cb23-154" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(</span>
-<span id="cb23-155"><a href="#cb23-155" aria-hidden="true" tabindex="-1"></a>  <span class="at">Step =</span> <span class="fu">c</span>(<span class="st">"PLACES raw (counties)"</span>,</span>
-<span id="cb23-156"><a href="#cb23-156" aria-hidden="true" tabindex="-1"></a>           <span class="st">"ACS raw (counties)"</span>,</span>
-<span id="cb23-157"><a href="#cb23-157" aria-hidden="true" tabindex="-1"></a>           <span class="st">"Inner join on FIPS + complete-case filter"</span>,</span>
-<span id="cb23-158"><a href="#cb23-158" aria-hidden="true" tabindex="-1"></a>           <span class="st">"Final analytic dataset"</span>),</span>
-<span id="cb23-159"><a href="#cb23-159" aria-hidden="true" tabindex="-1"></a>  <span class="at">N =</span> <span class="fu">c</span>(n_places, n_acs, n_merged, n_merged)</span>
-<span id="cb23-160"><a href="#cb23-160" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span> knitr<span class="sc">::</span><span class="fu">kable</span>()</span>
-<span id="cb23-161"><a href="#cb23-161" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb23-162"><a href="#cb23-162" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-163"><a href="#cb23-163" aria-hidden="true" tabindex="-1"></a>The ~1-county attrition comes from (a) the national aggregate row in PLACES (FIPS = "US"), which has no corresponding ACS county GEOID, and (b) occasional small or newly-redrawn geographic units where the PLACES locationid does not match any ACS GEOID.</span>
-<span id="cb23-164"><a href="#cb23-164" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-165"><a href="#cb23-165" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3.3 Variable Transformations</span></span>
-<span id="cb23-166"><a href="#cb23-166" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-167"><a href="#cb23-167" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span><span class="in">`income_10k`</span> — median income rescaled to \$10k units for interpretable regression coefficients</span>
-<span id="cb23-168"><a href="#cb23-168" aria-hidden="true" tabindex="-1"></a><span class="ss">- </span>z-standardized versions of all covariates created downstream in the main report so coefficients are directly comparable</span>
+<span id="cb23-150"><a href="#cb23-150" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3.2 Long-to-Wide Format Decisions</span></span>
+<span id="cb23-151"><a href="#cb23-151" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-152"><a href="#cb23-152" aria-hidden="true" tabindex="-1"></a>The **PLACES raw download arrives in long format** — one row per county × measure × estimate type. A single county can appear dozens of times (once for each of ~40 measures: diabetes, hypertension, obesity, etc.). We do two things at once:</span>
+<span id="cb23-153"><a href="#cb23-153" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-154"><a href="#cb23-154" aria-hidden="true" tabindex="-1"></a><span class="ss">1. </span>**Filter** to the single row per county that corresponds to <span class="in">`measureid = 'DIABETES'`</span> AND <span class="in">`datavaluetypeid = 'AgeAdjPrv'`</span> (age-adjusted prevalence, not crude).</span>
+<span id="cb23-155"><a href="#cb23-155" aria-hidden="true" tabindex="-1"></a><span class="ss">2. </span>**Select and rename** only the fields we need, producing a compact **wide-by-county** table ready for joining.</span>
+<span id="cb23-156"><a href="#cb23-156" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-157"><a href="#cb23-157" aria-hidden="true" tabindex="-1"></a><span class="in">```{r tidy-places, eval=FALSE}</span></span>
+<span id="cb23-158"><a href="#cb23-158" aria-hidden="true" tabindex="-1"></a>places <span class="ot">&lt;-</span> places_raw <span class="sc">|&gt;</span></span>
+<span id="cb23-159"><a href="#cb23-159" aria-hidden="true" tabindex="-1"></a>  <span class="fu">transmute</span>(<span class="at">state =</span> statedesc, <span class="at">state_abbr =</span> stateabbr,</span>
+<span id="cb23-160"><a href="#cb23-160" aria-hidden="true" tabindex="-1"></a>            <span class="at">county =</span> locationname, <span class="at">fips =</span> locationid,</span>
+<span id="cb23-161"><a href="#cb23-161" aria-hidden="true" tabindex="-1"></a>            <span class="at">diabetes =</span> <span class="fu">as.numeric</span>(data_value))</span>
+<span id="cb23-162"><a href="#cb23-162" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb23-163"><a href="#cb23-163" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-164"><a href="#cb23-164" aria-hidden="true" tabindex="-1"></a>The **ACS raw download arrives in long format by default** (one row per `(county, variable)`), but the Census API's `get=` parameter lets us request multiple variables in a single call, which the server returns as a **wide** table (one row per county, one column per variable). We rename the cryptic codes (<span class="in">`S1701_C03_001E`</span> → <span class="in">`poverty_pct`</span>, etc.) immediately so the downstream code is self-documenting.</span>
+<span id="cb23-165"><a href="#cb23-165" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-166"><a href="#cb23-166" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3.3 Missing Data and Census "Jam Values"</span></span>
+<span id="cb23-167"><a href="#cb23-167" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-168"><a href="#cb23-168" aria-hidden="true" tabindex="-1"></a>The Census Bureau uses **special sentinel negative values** — the so-called "jam values" — to encode several kinds of unreported data (suppressed for confidentiality, insufficient sample, non-applicable geography). The most common is **`-666666666`**, but several other large negatives exist.</span>
 <span id="cb23-169"><a href="#cb23-169" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-170"><a href="#cb23-170" aria-hidden="true" tabindex="-1"></a><span class="fu"># 4. Exploratory Data Analysis</span></span>
+<span id="cb23-170"><a href="#cb23-170" aria-hidden="true" tabindex="-1"></a>These jam values are **not missing in R's sense**: they are valid numeric entries that would silently poison every mean, SD, and correlation if left in. For example, Texas's Loving County (population ~60) had its median income reported as <span class="in">`-666666666`</span> in our raw ACS pull — a single such row is enough to inflate the apparent range of median income to "−\$666M to \$156k" and drive the correlation between income and every other covariate to near zero.</span>
 <span id="cb23-171"><a href="#cb23-171" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-172"><a href="#cb23-172" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.1 Outcome Distribution</span></span>
+<span id="cb23-172"><a href="#cb23-172" aria-hidden="true" tabindex="-1"></a>We convert any negative jam value to <span class="in">`NA`</span> before computing any statistics:</span>
 <span id="cb23-173"><a href="#cb23-173" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-174"><a href="#cb23-174" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-dist, fig.width=8, fig.height=4}</span></span>
-<span id="cb23-175"><a href="#cb23-175" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(merged, <span class="fu">aes</span>(diabetes)) <span class="sc">+</span></span>
-<span id="cb23-176"><a href="#cb23-176" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">50</span>, <span class="at">fill =</span> <span class="st">"#CB4B4B"</span>, <span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
-<span id="cb23-177"><a href="#cb23-177" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">mean</span>(merged<span class="sc">$</span>diabetes), <span class="at">linetype =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb23-178"><a href="#cb23-178" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Age-adjusted diabetes prevalence (%)"</span>,</span>
-<span id="cb23-179"><a href="#cb23-179" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">"Number of counties"</span>,</span>
-<span id="cb23-180"><a href="#cb23-180" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"Distribution of County Diabetes Prevalence"</span>,</span>
-<span id="cb23-181"><a href="#cb23-181" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="fu">sprintf</span>(<span class="st">"N = %d · Mean = %.1f%% · SD = %.2f · Range = %.1f–%.1f%%"</span>,</span>
-<span id="cb23-182"><a href="#cb23-182" aria-hidden="true" tabindex="-1"></a>                          <span class="fu">nrow</span>(merged), <span class="fu">mean</span>(merged<span class="sc">$</span>diabetes), <span class="fu">sd</span>(merged<span class="sc">$</span>diabetes),</span>
-<span id="cb23-183"><a href="#cb23-183" aria-hidden="true" tabindex="-1"></a>                          <span class="fu">min</span>(merged<span class="sc">$</span>diabetes), <span class="fu">max</span>(merged<span class="sc">$</span>diabetes))) <span class="sc">+</span></span>
-<span id="cb23-184"><a href="#cb23-184" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">12</span>)</span>
-<span id="cb23-185"><a href="#cb23-185" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb23-186"><a href="#cb23-186" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-187"><a href="#cb23-187" aria-hidden="true" tabindex="-1"></a>**Interpretation.** The distribution is right-skewed with a long upper tail of high-prevalence counties. Most counties cluster between 8% and 13%, but a small group exceeds 18% — these are concentrated in the rural South (Mississippi Delta, Alabama Black Belt), Appalachia, and Native American tribal lands. The 5.6%–21.5% range (nearly a 4-fold spread) signals that geographic disparities are substantial and warrant covariate modeling. The right skew also motivates using ordinary least squares with robust inference rather than a heavy transformation, since the tail is structural (specific high-burden regions), not statistical noise.</span>
-<span id="cb23-188"><a href="#cb23-188" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-189"><a href="#cb23-189" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.2 Covariate Distributions</span></span>
+<span id="cb23-174"><a href="#cb23-174" aria-hidden="true" tabindex="-1"></a><span class="in">```{r jam, eval=FALSE}</span></span>
+<span id="cb23-175"><a href="#cb23-175" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (v <span class="cf">in</span> <span class="fu">c</span>(<span class="st">"poverty_pct"</span>,<span class="st">"uninsured_pct"</span>,<span class="st">"median_income"</span>,<span class="st">"hs_or_higher_pct"</span>))</span>
+<span id="cb23-176"><a href="#cb23-176" aria-hidden="true" tabindex="-1"></a>  acs[[v]][acs[[v]] <span class="sc">&lt;</span> <span class="dv">0</span>] <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb23-177"><a href="#cb23-177" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb23-178"><a href="#cb23-178" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-179"><a href="#cb23-179" aria-hidden="true" tabindex="-1"></a>After this step, the four covariates have plausible ranges (e.g., median income: \$17k–\$157k; poverty: 1%–59%) and the correlation matrix in §4.3 looks as expected.</span>
+<span id="cb23-180"><a href="#cb23-180" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-181"><a href="#cb23-181" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3.4 Geographic Filtering</span></span>
+<span id="cb23-182"><a href="#cb23-182" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-183"><a href="#cb23-183" aria-hidden="true" tabindex="-1"></a>Several filters exclude geographies that are either not U.S. counties or incompatible with the spatial model:</span>
+<span id="cb23-184"><a href="#cb23-184" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-185"><a href="#cb23-185" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Filter <span class="pp">|</span> Where applied <span class="pp">|</span> Why <span class="pp">|</span></span>
+<span id="cb23-186"><a href="#cb23-186" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb23-187"><a href="#cb23-187" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Drop <span class="in">`state = "United States"`</span> row <span class="pp">|</span> PLACES <span class="pp">|</span> It is the national aggregate, not a county <span class="pp">|</span></span>
+<span id="cb23-188"><a href="#cb23-188" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Drop <span class="in">`STATEFP %in% c("60","66","69","72","78")`</span> <span class="pp">|</span> TIGER (map + Moran's I) <span class="pp">|</span> American Samoa, Guam, Northern Mariana Islands, Puerto Rico, U.S. Virgin Islands — not in ACS county universe <span class="pp">|</span></span>
+<span id="cb23-189"><a href="#cb23-189" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Additionally drop <span class="in">`STATEFP %in% c("02","15")`</span> <span class="pp">|</span> Moran's I only <span class="pp">|</span> Alaska and Hawaii have no land adjacency to the contiguous 48 states, so the queen-contiguity weights matrix would treat them as isolated islands with no neighbors <span class="pp">|</span></span>
 <span id="cb23-190"><a href="#cb23-190" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-191"><a href="#cb23-191" aria-hidden="true" tabindex="-1"></a><span class="in">```{r tbl-cov-summary}</span></span>
-<span id="cb23-192"><a href="#cb23-192" aria-hidden="true" tabindex="-1"></a><span class="co">#| tbl-cap: "Summary statistics for the four ACS covariates (N = 3,143 counties)."</span></span>
-<span id="cb23-193"><a href="#cb23-193" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
-<span id="cb23-194"><a href="#cb23-194" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
-<span id="cb23-195"><a href="#cb23-195" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Poverty rate (%)</span><span class="st">`</span>           <span class="ot">=</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="at">N =</span> <span class="fu">sum</span>(<span class="sc">!</span><span class="fu">is.na</span>(poverty_pct)),</span>
-<span id="cb23-196"><a href="#cb23-196" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Mean =</span> <span class="fu">mean</span>(poverty_pct),</span>
-<span id="cb23-197"><a href="#cb23-197" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">SD =</span> <span class="fu">sd</span>(poverty_pct),</span>
-<span id="cb23-198"><a href="#cb23-198" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Min =</span> <span class="fu">min</span>(poverty_pct),</span>
-<span id="cb23-199"><a href="#cb23-199" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Median =</span> <span class="fu">median</span>(poverty_pct),</span>
-<span id="cb23-200"><a href="#cb23-200" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Max =</span> <span class="fu">max</span>(poverty_pct))),</span>
-<span id="cb23-201"><a href="#cb23-201" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Uninsured rate (%)</span><span class="st">`</span>         <span class="ot">=</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="at">N =</span> <span class="fu">sum</span>(<span class="sc">!</span><span class="fu">is.na</span>(uninsured_pct)),</span>
-<span id="cb23-202"><a href="#cb23-202" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Mean =</span> <span class="fu">mean</span>(uninsured_pct),</span>
-<span id="cb23-203"><a href="#cb23-203" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">SD =</span> <span class="fu">sd</span>(uninsured_pct),</span>
-<span id="cb23-204"><a href="#cb23-204" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Min =</span> <span class="fu">min</span>(uninsured_pct),</span>
-<span id="cb23-205"><a href="#cb23-205" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Median =</span> <span class="fu">median</span>(uninsured_pct),</span>
-<span id="cb23-206"><a href="#cb23-206" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Max =</span> <span class="fu">max</span>(uninsured_pct))),</span>
-<span id="cb23-207"><a href="#cb23-207" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Median household income ($)</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="at">N =</span> <span class="fu">sum</span>(<span class="sc">!</span><span class="fu">is.na</span>(median_income)),</span>
-<span id="cb23-208"><a href="#cb23-208" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Mean =</span> <span class="fu">mean</span>(median_income),</span>
-<span id="cb23-209"><a href="#cb23-209" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">SD =</span> <span class="fu">sd</span>(median_income),</span>
-<span id="cb23-210"><a href="#cb23-210" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Min =</span> <span class="fu">min</span>(median_income),</span>
-<span id="cb23-211"><a href="#cb23-211" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Median =</span> <span class="fu">median</span>(median_income),</span>
-<span id="cb23-212"><a href="#cb23-212" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Max =</span> <span class="fu">max</span>(median_income))),</span>
-<span id="cb23-213"><a href="#cb23-213" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">% HS diploma or higher</span><span class="st">`</span>     <span class="ot">=</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="at">N =</span> <span class="fu">sum</span>(<span class="sc">!</span><span class="fu">is.na</span>(hs_or_higher_pct)),</span>
-<span id="cb23-214"><a href="#cb23-214" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Mean =</span> <span class="fu">mean</span>(hs_or_higher_pct),</span>
-<span id="cb23-215"><a href="#cb23-215" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">SD =</span> <span class="fu">sd</span>(hs_or_higher_pct),</span>
-<span id="cb23-216"><a href="#cb23-216" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Min =</span> <span class="fu">min</span>(hs_or_higher_pct),</span>
-<span id="cb23-217"><a href="#cb23-217" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Median =</span> <span class="fu">median</span>(hs_or_higher_pct),</span>
-<span id="cb23-218"><a href="#cb23-218" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Max =</span> <span class="fu">max</span>(hs_or_higher_pct)))</span>
-<span id="cb23-219"><a href="#cb23-219" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb23-220"><a href="#cb23-220" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">pivot_longer</span>(<span class="fu">everything</span>(), <span class="at">names_to =</span> <span class="st">"Variable"</span>, <span class="at">values_to =</span> <span class="st">"stats"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb23-221"><a href="#cb23-221" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">unnest_wider</span>(stats) <span class="sc">|&gt;</span></span>
-<span id="cb23-222"><a href="#cb23-222" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
-<span id="cb23-223"><a href="#cb23-223" aria-hidden="true" tabindex="-1"></a>    <span class="at">N      =</span> <span class="fu">format</span>(N, <span class="at">big.mark =</span> <span class="st">","</span>),</span>
-<span id="cb23-224"><a href="#cb23-224" aria-hidden="true" tabindex="-1"></a>    <span class="at">Mean   =</span> <span class="fu">ifelse</span>(<span class="fu">grepl</span>(<span class="st">"income"</span>, Variable),</span>
-<span id="cb23-225"><a href="#cb23-225" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">round</span>(Mean, <span class="dv">0</span>), <span class="at">big.mark =</span> <span class="st">","</span>),</span>
-<span id="cb23-226"><a href="#cb23-226" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, Mean)),</span>
-<span id="cb23-227"><a href="#cb23-227" aria-hidden="true" tabindex="-1"></a>    <span class="at">SD     =</span> <span class="fu">ifelse</span>(<span class="fu">grepl</span>(<span class="st">"income"</span>, Variable),</span>
-<span id="cb23-228"><a href="#cb23-228" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">round</span>(SD, <span class="dv">0</span>), <span class="at">big.mark =</span> <span class="st">","</span>),</span>
-<span id="cb23-229"><a href="#cb23-229" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, SD)),</span>
-<span id="cb23-230"><a href="#cb23-230" aria-hidden="true" tabindex="-1"></a>    <span class="at">Min    =</span> <span class="fu">ifelse</span>(<span class="fu">grepl</span>(<span class="st">"income"</span>, Variable),</span>
-<span id="cb23-231"><a href="#cb23-231" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">round</span>(Min, <span class="dv">0</span>), <span class="at">big.mark =</span> <span class="st">","</span>),</span>
-<span id="cb23-232"><a href="#cb23-232" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, Min)),</span>
-<span id="cb23-233"><a href="#cb23-233" aria-hidden="true" tabindex="-1"></a>    <span class="at">Median =</span> <span class="fu">ifelse</span>(<span class="fu">grepl</span>(<span class="st">"income"</span>, Variable),</span>
-<span id="cb23-234"><a href="#cb23-234" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">round</span>(Median, <span class="dv">0</span>), <span class="at">big.mark =</span> <span class="st">","</span>),</span>
-<span id="cb23-235"><a href="#cb23-235" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, Median)),</span>
-<span id="cb23-236"><a href="#cb23-236" aria-hidden="true" tabindex="-1"></a>    <span class="at">Max    =</span> <span class="fu">ifelse</span>(<span class="fu">grepl</span>(<span class="st">"income"</span>, Variable),</span>
-<span id="cb23-237"><a href="#cb23-237" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">round</span>(Max, <span class="dv">0</span>), <span class="at">big.mark =</span> <span class="st">","</span>),</span>
-<span id="cb23-238"><a href="#cb23-238" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, Max))</span>
-<span id="cb23-239"><a href="#cb23-239" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb23-240"><a href="#cb23-240" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">align =</span> <span class="fu">c</span>(<span class="st">"l"</span>, <span class="st">"r"</span>, <span class="st">"r"</span>, <span class="st">"r"</span>, <span class="st">"r"</span>, <span class="st">"r"</span>, <span class="st">"r"</span>))</span>
-<span id="cb23-241"><a href="#cb23-241" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb23-242"><a href="#cb23-242" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-243"><a href="#cb23-243" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-cov, fig.width=9, fig.height=6}</span></span>
-<span id="cb23-244"><a href="#cb23-244" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
-<span id="cb23-245"><a href="#cb23-245" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(poverty_pct, uninsured_pct, median_income, hs_or_higher_pct) <span class="sc">|&gt;</span></span>
-<span id="cb23-246"><a href="#cb23-246" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">everything</span>(), <span class="at">names_to =</span> <span class="st">"var"</span>, <span class="at">values_to =</span> <span class="st">"val"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb23-247"><a href="#cb23-247" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">var =</span> <span class="fu">recode</span>(var,</span>
-<span id="cb23-248"><a href="#cb23-248" aria-hidden="true" tabindex="-1"></a>    <span class="at">poverty_pct      =</span> <span class="st">"Poverty rate (%)"</span>,</span>
-<span id="cb23-249"><a href="#cb23-249" aria-hidden="true" tabindex="-1"></a>    <span class="at">uninsured_pct    =</span> <span class="st">"Uninsured rate (%)"</span>,</span>
-<span id="cb23-250"><a href="#cb23-250" aria-hidden="true" tabindex="-1"></a>    <span class="at">median_income    =</span> <span class="st">"Median household income ($)"</span>,</span>
-<span id="cb23-251"><a href="#cb23-251" aria-hidden="true" tabindex="-1"></a>    <span class="at">hs_or_higher_pct =</span> <span class="st">"% with HS diploma or higher"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb23-252"><a href="#cb23-252" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(val)) <span class="sc">+</span></span>
-<span id="cb23-253"><a href="#cb23-253" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">40</span>, <span class="at">fill =</span> <span class="st">"#4B7BCB"</span>, <span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
-<span id="cb23-254"><a href="#cb23-254" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> var, <span class="at">scales =</span> <span class="st">"free"</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb23-255"><a href="#cb23-255" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">labels =</span> <span class="fu">label_comma</span>()) <span class="sc">+</span></span>
-<span id="cb23-256"><a href="#cb23-256" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Number of counties"</span>,</span>
-<span id="cb23-257"><a href="#cb23-257" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"ACS Covariate Distributions Across U.S. Counties"</span>) <span class="sc">+</span></span>
-<span id="cb23-258"><a href="#cb23-258" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>)</span>
-<span id="cb23-259"><a href="#cb23-259" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb23-260"><a href="#cb23-260" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-261"><a href="#cb23-261" aria-hidden="true" tabindex="-1"></a>**Interpretation.** The four covariates show very different shapes: poverty and uninsured rate are both right-skewed (most counties low, a tail of disadvantaged counties), median income is roughly log-normal with a few wealthy outliers (metro suburbs), and education (% HS or higher) is sharply left-skewed — the vast majority of U.S. counties now have over 85% high-school completion, and variation mostly lies in the lower tail (67%–90%). This asymmetry in the education variable means the "bad" end of the distribution (low HS completion) carries most of the explanatory signal for diabetes disparities.</span>
-<span id="cb23-262"><a href="#cb23-262" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-263"><a href="#cb23-263" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.3 Correlation Among Covariates</span></span>
-<span id="cb23-264"><a href="#cb23-264" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-265"><a href="#cb23-265" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-corr, fig.width=6, fig.height=5}</span></span>
-<span id="cb23-266"><a href="#cb23-266" aria-hidden="true" tabindex="-1"></a>X <span class="ot">&lt;-</span> merged <span class="sc">|&gt;</span> <span class="fu">select</span>(poverty_pct, uninsured_pct, income_10k, hs_or_higher_pct)</span>
-<span id="cb23-267"><a href="#cb23-267" aria-hidden="true" tabindex="-1"></a>cor_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">as.table</span>(<span class="fu">round</span>(<span class="fu">cor</span>(X), <span class="dv">2</span>)))</span>
-<span id="cb23-268"><a href="#cb23-268" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(cor_df) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Var1"</span>,<span class="st">"Var2"</span>,<span class="st">"r"</span>)</span>
-<span id="cb23-269"><a href="#cb23-269" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-270"><a href="#cb23-270" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(cor_df, <span class="fu">aes</span>(Var1, Var2, <span class="at">fill =</span> r, <span class="at">label =</span> r)) <span class="sc">+</span></span>
-<span id="cb23-271"><a href="#cb23-271" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_tile</span>(<span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
-<span id="cb23-272"><a href="#cb23-272" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="at">size =</span> <span class="dv">4</span>) <span class="sc">+</span></span>
-<span id="cb23-273"><a href="#cb23-273" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(<span class="at">low =</span> <span class="st">"#2C7BB6"</span>, <span class="at">mid =</span> <span class="st">"white"</span>, <span class="at">high =</span> <span class="st">"#D7191C"</span>,</span>
-<span id="cb23-274"><a href="#cb23-274" aria-hidden="true" tabindex="-1"></a>                       <span class="at">midpoint =</span> <span class="dv">0</span>, <span class="at">limits =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
-<span id="cb23-275"><a href="#cb23-275" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="cn">NULL</span>, <span class="at">title =</span> <span class="st">"Covariate Correlation Matrix"</span>) <span class="sc">+</span></span>
-<span id="cb23-276"><a href="#cb23-276" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>) <span class="sc">+</span></span>
-<span id="cb23-277"><a href="#cb23-277" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">30</span>, <span class="at">hjust =</span> <span class="dv">1</span>),</span>
-<span id="cb23-278"><a href="#cb23-278" aria-hidden="true" tabindex="-1"></a>        <span class="at">panel.grid =</span> <span class="fu">element_blank</span>())</span>
-<span id="cb23-279"><a href="#cb23-279" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb23-280"><a href="#cb23-280" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-281"><a href="#cb23-281" aria-hidden="true" tabindex="-1"></a>**Interpretation.** All four covariates are interrelated, as expected — they measure overlapping aspects of "structural disadvantage." The strongest pairwise correlation is between poverty and median income (r ≈ −0.72), reflecting the intuitive fact that poorer counties have lower median incomes. Poverty is also moderately correlated with education (r = −0.58) and with uninsured rate (r = 0.39), and education is moderately correlated with uninsured rate (r = −0.53). Critically, no pairwise correlation exceeds 0.75, and every variance-inflation factor in the main report is below 2.5 — well below the conventional multicollinearity threshold of 5. This justifies entering all four covariates simultaneously into the regression without dimension reduction.</span>
-<span id="cb23-282"><a href="#cb23-282" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-283"><a href="#cb23-283" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.4 Outcome vs. Covariate Scatterplots</span></span>
-<span id="cb23-284"><a href="#cb23-284" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-285"><a href="#cb23-285" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-scatter, fig.width=9, fig.height=7}</span></span>
-<span id="cb23-286"><a href="#cb23-286" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
-<span id="cb23-287"><a href="#cb23-287" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(diabetes, poverty_pct, uninsured_pct, median_income, hs_or_higher_pct) <span class="sc">|&gt;</span></span>
-<span id="cb23-288"><a href="#cb23-288" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="sc">-</span>diabetes, <span class="at">names_to =</span> <span class="st">"var"</span>, <span class="at">values_to =</span> <span class="st">"val"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb23-289"><a href="#cb23-289" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">var =</span> <span class="fu">recode</span>(var,</span>
-<span id="cb23-290"><a href="#cb23-290" aria-hidden="true" tabindex="-1"></a>    <span class="at">poverty_pct      =</span> <span class="st">"Poverty rate (%)"</span>,</span>
-<span id="cb23-291"><a href="#cb23-291" aria-hidden="true" tabindex="-1"></a>    <span class="at">uninsured_pct    =</span> <span class="st">"Uninsured rate (%)"</span>,</span>
-<span id="cb23-292"><a href="#cb23-292" aria-hidden="true" tabindex="-1"></a>    <span class="at">median_income    =</span> <span class="st">"Median household income ($)"</span>,</span>
-<span id="cb23-293"><a href="#cb23-293" aria-hidden="true" tabindex="-1"></a>    <span class="at">hs_or_higher_pct =</span> <span class="st">"% with HS diploma or higher"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb23-294"><a href="#cb23-294" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(val, diabetes)) <span class="sc">+</span></span>
-<span id="cb23-295"><a href="#cb23-295" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.25</span>, <span class="at">color =</span> <span class="st">"#555"</span>, <span class="at">size =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
-<span id="cb23-296"><a href="#cb23-296" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>, <span class="at">color =</span> <span class="st">"#CB4B4B"</span>, <span class="at">linewidth =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
-<span id="cb23-297"><a href="#cb23-297" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> var, <span class="at">scales =</span> <span class="st">"free_x"</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb23-298"><a href="#cb23-298" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">labels =</span> <span class="fu">label_comma</span>()) <span class="sc">+</span></span>
-<span id="cb23-299"><a href="#cb23-299" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Diabetes prevalence (%)"</span>,</span>
-<span id="cb23-300"><a href="#cb23-300" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"Bivariate Relationships: Diabetes vs. ACS Covariates"</span>) <span class="sc">+</span></span>
-<span id="cb23-301"><a href="#cb23-301" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>)</span>
-<span id="cb23-302"><a href="#cb23-302" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb23-303"><a href="#cb23-303" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-304"><a href="#cb23-304" aria-hidden="true" tabindex="-1"></a>**Interpretation.** All four predictors show a clear, monotonic association with diabetes prevalence in the theoretically expected direction: positive slopes for poverty and uninsured rate (more disadvantage → more diabetes), negative slopes for median income and educational attainment (more resources → less diabetes). Visually, the **poverty rate and education panels show the tightest linear relationships** — the clouds are narrow and the slopes are steep. The uninsured-rate and median-income panels also slope in the expected direction but with more scatter, consistent with their smaller coefficients in the multivariate regression. These bivariate patterns justify a linear model as a first approximation; any remaining non-linearity is flagged for robustness checks in the main report.</span>
-<span id="cb23-305"><a href="#cb23-305" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-306"><a href="#cb23-306" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.5 State-Level Averages</span></span>
-<span id="cb23-307"><a href="#cb23-307" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-308"><a href="#cb23-308" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-state-bar, fig.width=8, fig.height=8}</span></span>
-<span id="cb23-309"><a href="#cb23-309" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
-<span id="cb23-310"><a href="#cb23-310" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(state_abbr, state) <span class="sc">|&gt;</span></span>
-<span id="cb23-311"><a href="#cb23-311" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">diabetes =</span> <span class="fu">mean</span>(diabetes), <span class="at">n =</span> dplyr<span class="sc">::</span><span class="fu">n</span>(), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb23-312"><a href="#cb23-312" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="fu">reorder</span>(state_abbr, diabetes), diabetes, <span class="at">fill =</span> diabetes)) <span class="sc">+</span></span>
-<span id="cb23-313"><a href="#cb23-313" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
-<span id="cb23-314"><a href="#cb23-314" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_distiller</span>(<span class="at">palette =</span> <span class="st">"YlOrRd"</span>, <span class="at">direction =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
-<span id="cb23-315"><a href="#cb23-315" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>() <span class="sc">+</span></span>
-<span id="cb23-316"><a href="#cb23-316" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Mean county diabetes prevalence (%)"</span>,</span>
-<span id="cb23-317"><a href="#cb23-317" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"State Averages — County Diabetes Prevalence"</span>) <span class="sc">+</span></span>
-<span id="cb23-318"><a href="#cb23-318" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">10</span>) <span class="sc">+</span></span>
-<span id="cb23-319"><a href="#cb23-319" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
-<span id="cb23-320"><a href="#cb23-320" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb23-321"><a href="#cb23-321" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-322"><a href="#cb23-322" aria-hidden="true" tabindex="-1"></a>**Interpretation.** The state-average ordering mirrors the classic Southeast "Diabetes Belt" first named by the CDC in 2011: Mississippi, Louisiana, Alabama, Georgia, and South Carolina at the top; Vermont, Massachusetts, Wyoming, New Hampshire, and Connecticut at the bottom. The visible gap between the top and bottom states — roughly 13% vs 7%, nearly a two-fold difference in mean prevalence — is striking on its own, but the state-average view hides substantial within-state heterogeneity (e.g., Texas has both some of the highest-burden border counties and some very low-burden metro suburbs). This is exactly why the main report complements this bar chart with a full **county-level choropleth** (§3.4 of the report) — the state view is an overview; the county view is the evidence.</span>
-<span id="cb23-323"><a href="#cb23-323" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-324"><a href="#cb23-324" aria-hidden="true" tabindex="-1"></a><span class="fu"># 5. Reproducibility</span></span>
-<span id="cb23-325"><a href="#cb23-325" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-326"><a href="#cb23-326" aria-hidden="true" tabindex="-1"></a>All code, data URLs, and package versions needed to recreate every figure and table on this page are contained in the source <span class="in">`data.qmd`</span>. Click the **`&lt;/&gt; Code`** button in the page header to view all code blocks.</span>
-<span id="cb23-327"><a href="#cb23-327" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-328"><a href="#cb23-328" aria-hidden="true" tabindex="-1"></a><span class="in">```{r sessioninfo}</span></span>
-<span id="cb23-329"><a href="#cb23-329" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
-<span id="cb23-330"><a href="#cb23-330" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span></code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
+<span id="cb23-191"><a href="#cb23-191" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3.5 Merge on 5-digit County FIPS</span></span>
+<span id="cb23-192"><a href="#cb23-192" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-193"><a href="#cb23-193" aria-hidden="true" tabindex="-1"></a>Both PLACES and ACS use the same 5-digit county FIPS code (<span class="in">`SSCCC`</span>, where <span class="in">`SS`</span> is the state FIPS and <span class="in">`CCC`</span> is the county FIPS). We join on this key with an <span class="in">`inner_join`</span>, then drop any row missing any covariate:</span>
+<span id="cb23-194"><a href="#cb23-194" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-195"><a href="#cb23-195" aria-hidden="true" tabindex="-1"></a><span class="in">```{r merge}</span></span>
+<span id="cb23-196"><a href="#cb23-196" aria-hidden="true" tabindex="-1"></a>merged <span class="ot">&lt;-</span> places <span class="sc">|&gt;</span></span>
+<span id="cb23-197"><a href="#cb23-197" aria-hidden="true" tabindex="-1"></a>  <span class="fu">inner_join</span>(acs, <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"fips"</span> <span class="ot">=</span> <span class="st">"GEOID"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb23-198"><a href="#cb23-198" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(diabetes), <span class="sc">!</span><span class="fu">is.na</span>(poverty_pct), <span class="sc">!</span><span class="fu">is.na</span>(uninsured_pct),</span>
+<span id="cb23-199"><a href="#cb23-199" aria-hidden="true" tabindex="-1"></a>         <span class="sc">!</span><span class="fu">is.na</span>(median_income), <span class="sc">!</span><span class="fu">is.na</span>(hs_or_higher_pct)) <span class="sc">|&gt;</span></span>
+<span id="cb23-200"><a href="#cb23-200" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">income_10k =</span> median_income <span class="sc">/</span> <span class="dv">10000</span>)</span>
+<span id="cb23-201"><a href="#cb23-201" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb23-202"><a href="#cb23-202" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-203"><a href="#cb23-203" aria-hidden="true" tabindex="-1"></a>The complete-case filter is **pairwise on the analytic set**, not imputation-based, because the fraction of missing counties is tiny (see the loss accounting below) and the missingness is plausibly MCAR (mostly sparsely-populated counties whose estimates fall below Census's reporting threshold).</span>
+<span id="cb23-204"><a href="#cb23-204" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-205"><a href="#cb23-205" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3.6 Row-Loss Accounting</span></span>
+<span id="cb23-206"><a href="#cb23-206" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-207"><a href="#cb23-207" aria-hidden="true" tabindex="-1"></a><span class="in">```{r losses}</span></span>
+<span id="cb23-208"><a href="#cb23-208" aria-hidden="true" tabindex="-1"></a>n_places <span class="ot">&lt;-</span> <span class="fu">nrow</span>(places)</span>
+<span id="cb23-209"><a href="#cb23-209" aria-hidden="true" tabindex="-1"></a>n_acs    <span class="ot">&lt;-</span> <span class="fu">nrow</span>(acs)</span>
+<span id="cb23-210"><a href="#cb23-210" aria-hidden="true" tabindex="-1"></a>n_merged <span class="ot">&lt;-</span> <span class="fu">nrow</span>(merged)</span>
+<span id="cb23-211"><a href="#cb23-211" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(</span>
+<span id="cb23-212"><a href="#cb23-212" aria-hidden="true" tabindex="-1"></a>  <span class="at">Step =</span> <span class="fu">c</span>(<span class="st">"PLACES raw (counties + US aggregate)"</span>,</span>
+<span id="cb23-213"><a href="#cb23-213" aria-hidden="true" tabindex="-1"></a>           <span class="st">"ACS raw (all U.S. counties)"</span>,</span>
+<span id="cb23-214"><a href="#cb23-214" aria-hidden="true" tabindex="-1"></a>           <span class="st">"Inner join on FIPS + complete-case filter"</span>,</span>
+<span id="cb23-215"><a href="#cb23-215" aria-hidden="true" tabindex="-1"></a>           <span class="st">"Final analytic dataset"</span>),</span>
+<span id="cb23-216"><a href="#cb23-216" aria-hidden="true" tabindex="-1"></a>  <span class="at">N =</span> <span class="fu">c</span>(n_places, n_acs, n_merged, n_merged)</span>
+<span id="cb23-217"><a href="#cb23-217" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span> knitr<span class="sc">::</span><span class="fu">kable</span>()</span>
+<span id="cb23-218"><a href="#cb23-218" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb23-219"><a href="#cb23-219" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-220"><a href="#cb23-220" aria-hidden="true" tabindex="-1"></a>The single row of attrition from PLACES → merged is the national aggregate (<span class="in">`FIPS = "US"`</span>), which has no corresponding ACS county GEOID. The larger gap between ACS raw (~3,220 counties) and merged (3,143) reflects counties that exist in the Census universe but are missing from PLACES — typically because their BRFSS sample sizes were too small for a reliable model-based estimate that release year.</span>
+<span id="cb23-221"><a href="#cb23-221" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-222"><a href="#cb23-222" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3.7 Variable Transformations</span></span>
+<span id="cb23-223"><a href="#cb23-223" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-224"><a href="#cb23-224" aria-hidden="true" tabindex="-1"></a>Two transformations happen in this notebook; a third happens in the main report.</span>
+<span id="cb23-225"><a href="#cb23-225" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-226"><a href="#cb23-226" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Variable <span class="pp">|</span> Transformation <span class="pp">|</span> Rationale <span class="pp">|</span></span>
+<span id="cb23-227"><a href="#cb23-227" aria-hidden="true" tabindex="-1"></a><span class="pp">|---|---|---|</span></span>
+<span id="cb23-228"><a href="#cb23-228" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> <span class="in">`income_10k`</span> <span class="pp">|</span> <span class="in">`median_income / 10000`</span> <span class="pp">|</span> Reports regression coefficients in "per \$10k" units instead of "per \$1" — more interpretable <span class="pp">|</span></span>
+<span id="cb23-229"><a href="#cb23-229" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> (all four covariates) <span class="pp">|</span> z-score standardization in the main report <span class="pp">|</span> <span class="in">`(x − mean) / sd`</span>; makes the four β coefficients directly comparable across variables with different units (%, \$, %, %) <span class="pp">|</span></span>
+<span id="cb23-230"><a href="#cb23-230" aria-hidden="true" tabindex="-1"></a><span class="pp">|</span> Polygon simplification <span class="pp">|</span> <span class="in">`rmapshaper::ms_simplify(keep = 0.3)`</span> on TIGER shapefile <span class="pp">|</span> Reduces vertex count to 30% for faster interactive map rendering; visual difference is negligible at country scale <span class="pp">|</span></span>
+<span id="cb23-231"><a href="#cb23-231" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-232"><a href="#cb23-232" aria-hidden="true" tabindex="-1"></a>No outcome-side transformation is applied: the age-adjusted diabetes prevalence is already the reportable quantity, and the distribution (right-skewed but not log-normal; see §4.1) is compatible with ordinary least squares assumptions without a log or square-root transform.</span>
+<span id="cb23-233"><a href="#cb23-233" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-234"><a href="#cb23-234" aria-hidden="true" tabindex="-1"></a><span class="fu"># 4. Exploratory Data Analysis</span></span>
+<span id="cb23-235"><a href="#cb23-235" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-236"><a href="#cb23-236" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.1 Outcome Distribution</span></span>
+<span id="cb23-237"><a href="#cb23-237" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-238"><a href="#cb23-238" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-dist, fig.width=8, fig.height=4}</span></span>
+<span id="cb23-239"><a href="#cb23-239" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(merged, <span class="fu">aes</span>(diabetes)) <span class="sc">+</span></span>
+<span id="cb23-240"><a href="#cb23-240" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">50</span>, <span class="at">fill =</span> <span class="st">"#CB4B4B"</span>, <span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb23-241"><a href="#cb23-241" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">mean</span>(merged<span class="sc">$</span>diabetes), <span class="at">linetype =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb23-242"><a href="#cb23-242" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Age-adjusted diabetes prevalence (%)"</span>,</span>
+<span id="cb23-243"><a href="#cb23-243" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">"Number of counties"</span>,</span>
+<span id="cb23-244"><a href="#cb23-244" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"Distribution of County Diabetes Prevalence"</span>,</span>
+<span id="cb23-245"><a href="#cb23-245" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="fu">sprintf</span>(<span class="st">"N = %d · Mean = %.1f%% · SD = %.2f · Range = %.1f–%.1f%%"</span>,</span>
+<span id="cb23-246"><a href="#cb23-246" aria-hidden="true" tabindex="-1"></a>                          <span class="fu">nrow</span>(merged), <span class="fu">mean</span>(merged<span class="sc">$</span>diabetes), <span class="fu">sd</span>(merged<span class="sc">$</span>diabetes),</span>
+<span id="cb23-247"><a href="#cb23-247" aria-hidden="true" tabindex="-1"></a>                          <span class="fu">min</span>(merged<span class="sc">$</span>diabetes), <span class="fu">max</span>(merged<span class="sc">$</span>diabetes))) <span class="sc">+</span></span>
+<span id="cb23-248"><a href="#cb23-248" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">12</span>)</span>
+<span id="cb23-249"><a href="#cb23-249" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb23-250"><a href="#cb23-250" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-251"><a href="#cb23-251" aria-hidden="true" tabindex="-1"></a>**Interpretation.** The distribution is right-skewed with a long upper tail of high-prevalence counties. Most counties cluster between 8% and 13%, but a small group exceeds 18% — these are concentrated in the rural South (Mississippi Delta, Alabama Black Belt), Appalachia, and Native American tribal lands. The 5.6%–21.5% range (nearly a 4-fold spread) signals that geographic disparities are substantial and warrant covariate modeling. The right skew also motivates using ordinary least squares with robust inference rather than a heavy transformation, since the tail is structural (specific high-burden regions), not statistical noise.</span>
+<span id="cb23-252"><a href="#cb23-252" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-253"><a href="#cb23-253" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.2 Covariate Distributions</span></span>
+<span id="cb23-254"><a href="#cb23-254" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-255"><a href="#cb23-255" aria-hidden="true" tabindex="-1"></a><span class="in">```{r tbl-cov-summary}</span></span>
+<span id="cb23-256"><a href="#cb23-256" aria-hidden="true" tabindex="-1"></a><span class="co">#| tbl-cap: "Summary statistics for the four ACS covariates (N = 3,143 counties)."</span></span>
+<span id="cb23-257"><a href="#cb23-257" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
+<span id="cb23-258"><a href="#cb23-258" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb23-259"><a href="#cb23-259" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Poverty rate (%)</span><span class="st">`</span>           <span class="ot">=</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="at">N =</span> <span class="fu">sum</span>(<span class="sc">!</span><span class="fu">is.na</span>(poverty_pct)),</span>
+<span id="cb23-260"><a href="#cb23-260" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Mean =</span> <span class="fu">mean</span>(poverty_pct),</span>
+<span id="cb23-261"><a href="#cb23-261" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">SD =</span> <span class="fu">sd</span>(poverty_pct),</span>
+<span id="cb23-262"><a href="#cb23-262" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Min =</span> <span class="fu">min</span>(poverty_pct),</span>
+<span id="cb23-263"><a href="#cb23-263" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Median =</span> <span class="fu">median</span>(poverty_pct),</span>
+<span id="cb23-264"><a href="#cb23-264" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Max =</span> <span class="fu">max</span>(poverty_pct))),</span>
+<span id="cb23-265"><a href="#cb23-265" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Uninsured rate (%)</span><span class="st">`</span>         <span class="ot">=</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="at">N =</span> <span class="fu">sum</span>(<span class="sc">!</span><span class="fu">is.na</span>(uninsured_pct)),</span>
+<span id="cb23-266"><a href="#cb23-266" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Mean =</span> <span class="fu">mean</span>(uninsured_pct),</span>
+<span id="cb23-267"><a href="#cb23-267" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">SD =</span> <span class="fu">sd</span>(uninsured_pct),</span>
+<span id="cb23-268"><a href="#cb23-268" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Min =</span> <span class="fu">min</span>(uninsured_pct),</span>
+<span id="cb23-269"><a href="#cb23-269" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Median =</span> <span class="fu">median</span>(uninsured_pct),</span>
+<span id="cb23-270"><a href="#cb23-270" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Max =</span> <span class="fu">max</span>(uninsured_pct))),</span>
+<span id="cb23-271"><a href="#cb23-271" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Median household income ($)</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="at">N =</span> <span class="fu">sum</span>(<span class="sc">!</span><span class="fu">is.na</span>(median_income)),</span>
+<span id="cb23-272"><a href="#cb23-272" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Mean =</span> <span class="fu">mean</span>(median_income),</span>
+<span id="cb23-273"><a href="#cb23-273" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">SD =</span> <span class="fu">sd</span>(median_income),</span>
+<span id="cb23-274"><a href="#cb23-274" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Min =</span> <span class="fu">min</span>(median_income),</span>
+<span id="cb23-275"><a href="#cb23-275" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Median =</span> <span class="fu">median</span>(median_income),</span>
+<span id="cb23-276"><a href="#cb23-276" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Max =</span> <span class="fu">max</span>(median_income))),</span>
+<span id="cb23-277"><a href="#cb23-277" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">% HS diploma or higher</span><span class="st">`</span>     <span class="ot">=</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="at">N =</span> <span class="fu">sum</span>(<span class="sc">!</span><span class="fu">is.na</span>(hs_or_higher_pct)),</span>
+<span id="cb23-278"><a href="#cb23-278" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Mean =</span> <span class="fu">mean</span>(hs_or_higher_pct),</span>
+<span id="cb23-279"><a href="#cb23-279" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">SD =</span> <span class="fu">sd</span>(hs_or_higher_pct),</span>
+<span id="cb23-280"><a href="#cb23-280" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Min =</span> <span class="fu">min</span>(hs_or_higher_pct),</span>
+<span id="cb23-281"><a href="#cb23-281" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Median =</span> <span class="fu">median</span>(hs_or_higher_pct),</span>
+<span id="cb23-282"><a href="#cb23-282" aria-hidden="true" tabindex="-1"></a>                                          <span class="at">Max =</span> <span class="fu">max</span>(hs_or_higher_pct)))</span>
+<span id="cb23-283"><a href="#cb23-283" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb23-284"><a href="#cb23-284" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">pivot_longer</span>(<span class="fu">everything</span>(), <span class="at">names_to =</span> <span class="st">"Variable"</span>, <span class="at">values_to =</span> <span class="st">"stats"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb23-285"><a href="#cb23-285" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">unnest_wider</span>(stats) <span class="sc">|&gt;</span></span>
+<span id="cb23-286"><a href="#cb23-286" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">mutate</span>(</span>
+<span id="cb23-287"><a href="#cb23-287" aria-hidden="true" tabindex="-1"></a>    <span class="at">N      =</span> <span class="fu">format</span>(N, <span class="at">big.mark =</span> <span class="st">","</span>),</span>
+<span id="cb23-288"><a href="#cb23-288" aria-hidden="true" tabindex="-1"></a>    <span class="at">Mean   =</span> <span class="fu">ifelse</span>(<span class="fu">grepl</span>(<span class="st">"income"</span>, Variable),</span>
+<span id="cb23-289"><a href="#cb23-289" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">round</span>(Mean, <span class="dv">0</span>), <span class="at">big.mark =</span> <span class="st">","</span>),</span>
+<span id="cb23-290"><a href="#cb23-290" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, Mean)),</span>
+<span id="cb23-291"><a href="#cb23-291" aria-hidden="true" tabindex="-1"></a>    <span class="at">SD     =</span> <span class="fu">ifelse</span>(<span class="fu">grepl</span>(<span class="st">"income"</span>, Variable),</span>
+<span id="cb23-292"><a href="#cb23-292" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">round</span>(SD, <span class="dv">0</span>), <span class="at">big.mark =</span> <span class="st">","</span>),</span>
+<span id="cb23-293"><a href="#cb23-293" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, SD)),</span>
+<span id="cb23-294"><a href="#cb23-294" aria-hidden="true" tabindex="-1"></a>    <span class="at">Min    =</span> <span class="fu">ifelse</span>(<span class="fu">grepl</span>(<span class="st">"income"</span>, Variable),</span>
+<span id="cb23-295"><a href="#cb23-295" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">round</span>(Min, <span class="dv">0</span>), <span class="at">big.mark =</span> <span class="st">","</span>),</span>
+<span id="cb23-296"><a href="#cb23-296" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, Min)),</span>
+<span id="cb23-297"><a href="#cb23-297" aria-hidden="true" tabindex="-1"></a>    <span class="at">Median =</span> <span class="fu">ifelse</span>(<span class="fu">grepl</span>(<span class="st">"income"</span>, Variable),</span>
+<span id="cb23-298"><a href="#cb23-298" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">round</span>(Median, <span class="dv">0</span>), <span class="at">big.mark =</span> <span class="st">","</span>),</span>
+<span id="cb23-299"><a href="#cb23-299" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, Median)),</span>
+<span id="cb23-300"><a href="#cb23-300" aria-hidden="true" tabindex="-1"></a>    <span class="at">Max    =</span> <span class="fu">ifelse</span>(<span class="fu">grepl</span>(<span class="st">"income"</span>, Variable),</span>
+<span id="cb23-301"><a href="#cb23-301" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">format</span>(<span class="fu">round</span>(Max, <span class="dv">0</span>), <span class="at">big.mark =</span> <span class="st">","</span>),</span>
+<span id="cb23-302"><a href="#cb23-302" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sprintf</span>(<span class="st">"%.2f"</span>, Max))</span>
+<span id="cb23-303"><a href="#cb23-303" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb23-304"><a href="#cb23-304" aria-hidden="true" tabindex="-1"></a>  knitr<span class="sc">::</span><span class="fu">kable</span>(<span class="at">align =</span> <span class="fu">c</span>(<span class="st">"l"</span>, <span class="st">"r"</span>, <span class="st">"r"</span>, <span class="st">"r"</span>, <span class="st">"r"</span>, <span class="st">"r"</span>, <span class="st">"r"</span>))</span>
+<span id="cb23-305"><a href="#cb23-305" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb23-306"><a href="#cb23-306" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-307"><a href="#cb23-307" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-cov, fig.width=9, fig.height=6}</span></span>
+<span id="cb23-308"><a href="#cb23-308" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
+<span id="cb23-309"><a href="#cb23-309" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(poverty_pct, uninsured_pct, median_income, hs_or_higher_pct) <span class="sc">|&gt;</span></span>
+<span id="cb23-310"><a href="#cb23-310" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">everything</span>(), <span class="at">names_to =</span> <span class="st">"var"</span>, <span class="at">values_to =</span> <span class="st">"val"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb23-311"><a href="#cb23-311" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">var =</span> <span class="fu">recode</span>(var,</span>
+<span id="cb23-312"><a href="#cb23-312" aria-hidden="true" tabindex="-1"></a>    <span class="at">poverty_pct      =</span> <span class="st">"Poverty rate (%)"</span>,</span>
+<span id="cb23-313"><a href="#cb23-313" aria-hidden="true" tabindex="-1"></a>    <span class="at">uninsured_pct    =</span> <span class="st">"Uninsured rate (%)"</span>,</span>
+<span id="cb23-314"><a href="#cb23-314" aria-hidden="true" tabindex="-1"></a>    <span class="at">median_income    =</span> <span class="st">"Median household income ($)"</span>,</span>
+<span id="cb23-315"><a href="#cb23-315" aria-hidden="true" tabindex="-1"></a>    <span class="at">hs_or_higher_pct =</span> <span class="st">"% with HS diploma or higher"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb23-316"><a href="#cb23-316" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(val)) <span class="sc">+</span></span>
+<span id="cb23-317"><a href="#cb23-317" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">40</span>, <span class="at">fill =</span> <span class="st">"#4B7BCB"</span>, <span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb23-318"><a href="#cb23-318" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> var, <span class="at">scales =</span> <span class="st">"free"</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb23-319"><a href="#cb23-319" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">labels =</span> <span class="fu">label_comma</span>()) <span class="sc">+</span></span>
+<span id="cb23-320"><a href="#cb23-320" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Number of counties"</span>,</span>
+<span id="cb23-321"><a href="#cb23-321" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"ACS Covariate Distributions Across U.S. Counties"</span>) <span class="sc">+</span></span>
+<span id="cb23-322"><a href="#cb23-322" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>)</span>
+<span id="cb23-323"><a href="#cb23-323" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb23-324"><a href="#cb23-324" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-325"><a href="#cb23-325" aria-hidden="true" tabindex="-1"></a>**Interpretation.** The four covariates show very different shapes: poverty and uninsured rate are both right-skewed (most counties low, a tail of disadvantaged counties), median income is roughly log-normal with a few wealthy outliers (metro suburbs), and education (% HS or higher) is sharply left-skewed — the vast majority of U.S. counties now have over 85% high-school completion, and variation mostly lies in the lower tail (67%–90%). This asymmetry in the education variable means the "bad" end of the distribution (low HS completion) carries most of the explanatory signal for diabetes disparities.</span>
+<span id="cb23-326"><a href="#cb23-326" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-327"><a href="#cb23-327" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.3 Correlation Among Covariates</span></span>
+<span id="cb23-328"><a href="#cb23-328" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-329"><a href="#cb23-329" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-corr, fig.width=6, fig.height=5}</span></span>
+<span id="cb23-330"><a href="#cb23-330" aria-hidden="true" tabindex="-1"></a>X <span class="ot">&lt;-</span> merged <span class="sc">|&gt;</span> <span class="fu">select</span>(poverty_pct, uninsured_pct, income_10k, hs_or_higher_pct)</span>
+<span id="cb23-331"><a href="#cb23-331" aria-hidden="true" tabindex="-1"></a>cor_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">as.table</span>(<span class="fu">round</span>(<span class="fu">cor</span>(X), <span class="dv">2</span>)))</span>
+<span id="cb23-332"><a href="#cb23-332" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(cor_df) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Var1"</span>,<span class="st">"Var2"</span>,<span class="st">"r"</span>)</span>
+<span id="cb23-333"><a href="#cb23-333" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-334"><a href="#cb23-334" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(cor_df, <span class="fu">aes</span>(Var1, Var2, <span class="at">fill =</span> r, <span class="at">label =</span> r)) <span class="sc">+</span></span>
+<span id="cb23-335"><a href="#cb23-335" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_tile</span>(<span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb23-336"><a href="#cb23-336" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="at">size =</span> <span class="dv">4</span>) <span class="sc">+</span></span>
+<span id="cb23-337"><a href="#cb23-337" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient2</span>(<span class="at">low =</span> <span class="st">"#2C7BB6"</span>, <span class="at">mid =</span> <span class="st">"white"</span>, <span class="at">high =</span> <span class="st">"#D7191C"</span>,</span>
+<span id="cb23-338"><a href="#cb23-338" aria-hidden="true" tabindex="-1"></a>                       <span class="at">midpoint =</span> <span class="dv">0</span>, <span class="at">limits =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb23-339"><a href="#cb23-339" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="cn">NULL</span>, <span class="at">title =</span> <span class="st">"Covariate Correlation Matrix"</span>) <span class="sc">+</span></span>
+<span id="cb23-340"><a href="#cb23-340" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>) <span class="sc">+</span></span>
+<span id="cb23-341"><a href="#cb23-341" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">30</span>, <span class="at">hjust =</span> <span class="dv">1</span>),</span>
+<span id="cb23-342"><a href="#cb23-342" aria-hidden="true" tabindex="-1"></a>        <span class="at">panel.grid =</span> <span class="fu">element_blank</span>())</span>
+<span id="cb23-343"><a href="#cb23-343" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb23-344"><a href="#cb23-344" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-345"><a href="#cb23-345" aria-hidden="true" tabindex="-1"></a>**Interpretation.** All four covariates are interrelated, as expected — they measure overlapping aspects of "structural disadvantage." The strongest pairwise correlation is between poverty and median income (r ≈ −0.72), reflecting the intuitive fact that poorer counties have lower median incomes. Poverty is also moderately correlated with education (r = −0.58) and with uninsured rate (r = 0.39), and education is moderately correlated with uninsured rate (r = −0.53). Critically, no pairwise correlation exceeds 0.75, and every variance-inflation factor in the main report is below 2.5 — well below the conventional multicollinearity threshold of 5. This justifies entering all four covariates simultaneously into the regression without dimension reduction.</span>
+<span id="cb23-346"><a href="#cb23-346" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-347"><a href="#cb23-347" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.4 Outcome vs. Covariate Scatterplots</span></span>
+<span id="cb23-348"><a href="#cb23-348" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-349"><a href="#cb23-349" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-scatter, fig.width=9, fig.height=7}</span></span>
+<span id="cb23-350"><a href="#cb23-350" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
+<span id="cb23-351"><a href="#cb23-351" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(diabetes, poverty_pct, uninsured_pct, median_income, hs_or_higher_pct) <span class="sc">|&gt;</span></span>
+<span id="cb23-352"><a href="#cb23-352" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="sc">-</span>diabetes, <span class="at">names_to =</span> <span class="st">"var"</span>, <span class="at">values_to =</span> <span class="st">"val"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb23-353"><a href="#cb23-353" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">var =</span> <span class="fu">recode</span>(var,</span>
+<span id="cb23-354"><a href="#cb23-354" aria-hidden="true" tabindex="-1"></a>    <span class="at">poverty_pct      =</span> <span class="st">"Poverty rate (%)"</span>,</span>
+<span id="cb23-355"><a href="#cb23-355" aria-hidden="true" tabindex="-1"></a>    <span class="at">uninsured_pct    =</span> <span class="st">"Uninsured rate (%)"</span>,</span>
+<span id="cb23-356"><a href="#cb23-356" aria-hidden="true" tabindex="-1"></a>    <span class="at">median_income    =</span> <span class="st">"Median household income ($)"</span>,</span>
+<span id="cb23-357"><a href="#cb23-357" aria-hidden="true" tabindex="-1"></a>    <span class="at">hs_or_higher_pct =</span> <span class="st">"% with HS diploma or higher"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb23-358"><a href="#cb23-358" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(val, diabetes)) <span class="sc">+</span></span>
+<span id="cb23-359"><a href="#cb23-359" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.25</span>, <span class="at">color =</span> <span class="st">"#555"</span>, <span class="at">size =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb23-360"><a href="#cb23-360" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>, <span class="at">color =</span> <span class="st">"#CB4B4B"</span>, <span class="at">linewidth =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb23-361"><a href="#cb23-361" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span> var, <span class="at">scales =</span> <span class="st">"free_x"</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb23-362"><a href="#cb23-362" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">labels =</span> <span class="fu">label_comma</span>()) <span class="sc">+</span></span>
+<span id="cb23-363"><a href="#cb23-363" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Diabetes prevalence (%)"</span>,</span>
+<span id="cb23-364"><a href="#cb23-364" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"Bivariate Relationships: Diabetes vs. ACS Covariates"</span>) <span class="sc">+</span></span>
+<span id="cb23-365"><a href="#cb23-365" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">11</span>)</span>
+<span id="cb23-366"><a href="#cb23-366" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb23-367"><a href="#cb23-367" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-368"><a href="#cb23-368" aria-hidden="true" tabindex="-1"></a>**Interpretation.** All four predictors show a clear, monotonic association with diabetes prevalence in the theoretically expected direction: positive slopes for poverty and uninsured rate (more disadvantage → more diabetes), negative slopes for median income and educational attainment (more resources → less diabetes). Visually, the **poverty rate and education panels show the tightest linear relationships** — the clouds are narrow and the slopes are steep. The uninsured-rate and median-income panels also slope in the expected direction but with more scatter, consistent with their smaller coefficients in the multivariate regression. These bivariate patterns justify a linear model as a first approximation; any remaining non-linearity is flagged for robustness checks in the main report.</span>
+<span id="cb23-369"><a href="#cb23-369" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-370"><a href="#cb23-370" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.5 State-Level Averages</span></span>
+<span id="cb23-371"><a href="#cb23-371" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-372"><a href="#cb23-372" aria-hidden="true" tabindex="-1"></a><span class="in">```{r fig-state-bar, fig.width=8, fig.height=8}</span></span>
+<span id="cb23-373"><a href="#cb23-373" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
+<span id="cb23-374"><a href="#cb23-374" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(state_abbr, state) <span class="sc">|&gt;</span></span>
+<span id="cb23-375"><a href="#cb23-375" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">diabetes =</span> <span class="fu">mean</span>(diabetes), <span class="at">n =</span> dplyr<span class="sc">::</span><span class="fu">n</span>(), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb23-376"><a href="#cb23-376" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(<span class="fu">reorder</span>(state_abbr, diabetes), diabetes, <span class="at">fill =</span> diabetes)) <span class="sc">+</span></span>
+<span id="cb23-377"><a href="#cb23-377" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb23-378"><a href="#cb23-378" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_distiller</span>(<span class="at">palette =</span> <span class="st">"YlOrRd"</span>, <span class="at">direction =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb23-379"><a href="#cb23-379" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>() <span class="sc">+</span></span>
+<span id="cb23-380"><a href="#cb23-380" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"Mean county diabetes prevalence (%)"</span>,</span>
+<span id="cb23-381"><a href="#cb23-381" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"State Averages — County Diabetes Prevalence"</span>) <span class="sc">+</span></span>
+<span id="cb23-382"><a href="#cb23-382" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">10</span>) <span class="sc">+</span></span>
+<span id="cb23-383"><a href="#cb23-383" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">legend.position =</span> <span class="st">"none"</span>)</span>
+<span id="cb23-384"><a href="#cb23-384" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
+<span id="cb23-385"><a href="#cb23-385" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-386"><a href="#cb23-386" aria-hidden="true" tabindex="-1"></a>**Interpretation.** The state-average ordering mirrors the classic Southeast "Diabetes Belt" first named by the CDC in 2011: Mississippi, Louisiana, Alabama, Georgia, and South Carolina at the top; Vermont, Massachusetts, Wyoming, New Hampshire, and Connecticut at the bottom. The visible gap between the top and bottom states — roughly 13% vs 7%, nearly a two-fold difference in mean prevalence — is striking on its own, but the state-average view hides substantial within-state heterogeneity (e.g., Texas has both some of the highest-burden border counties and some very low-burden metro suburbs). This is exactly why the main report complements this bar chart with a full **county-level choropleth** (§3.4 of the report) — the state view is an overview; the county view is the evidence.</span>
+<span id="cb23-387"><a href="#cb23-387" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-388"><a href="#cb23-388" aria-hidden="true" tabindex="-1"></a><span class="fu"># 5. Reproducibility</span></span>
+<span id="cb23-389"><a href="#cb23-389" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-390"><a href="#cb23-390" aria-hidden="true" tabindex="-1"></a>All code, data URLs, and package versions needed to recreate every figure and table on this page are contained in the source <span class="in">`data.qmd`</span>. Click the **`&lt;/&gt; Code`** button in the page header to view all code blocks.</span>
+<span id="cb23-391"><a href="#cb23-391" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-392"><a href="#cb23-392" aria-hidden="true" tabindex="-1"></a><span class="in">```{r sessioninfo}</span></span>
+<span id="cb23-393"><a href="#cb23-393" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
+<span id="cb23-394"><a href="#cb23-394" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span></code><button title="Copy to Clipboard" class="code-copy-button" data-in-quarto-modal=""><i class="bi"></i></button></pre></div>
 </div></div></div></div></div>
 </div> <!-- /content -->
 
