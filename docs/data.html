@@ -213,7 +213,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>This page documents every step of the data pipeline that feeds the main <a href="./diabetes.html">Diabetes Report</a>. All data are public, downloaded live via APIs, and fully reproducible.</p>
 <p><strong>Pipeline:</strong></p>
 <pre><code>CDC PLACES API ─┐
-                ├─► join on 5-digit county FIPS ─► analytic dataset (N = 3,143)
+                ├─► join on 5-digit county FIPS ─► analytic dataset (N = 3,142)
 Census ACS API ─┘
                                                    │
                       tigris county polygons ──────┴─► spatial layer</code></pre>
@@ -548,7 +548,7 @@ Census ACS API ─┘
 </table>
 </div>
 </div>
-<p>The single row of attrition from PLACES → merged is the national aggregate (<code>FIPS = "US"</code>), which has no corresponding ACS county GEOID. The larger gap between ACS raw (~3,220 counties) and merged (3,143) reflects counties that exist in the Census universe but are missing from PLACES — typically because their BRFSS sample sizes were too small for a reliable model-based estimate that release year.</p>
+<p>The single row of attrition from PLACES → merged is the national aggregate (<code>FIPS = "US"</code>), which has no corresponding ACS county GEOID. The larger gap between ACS raw (~3,220 counties) and merged (3,142) reflects counties that exist in the Census universe but are missing from PLACES — typically because their BRFSS sample sizes were too small for a reliable model-based estimate that release year.</p>
 </section>
 <section id="variable-transformations" class="level2">
 <h2 class="anchored" data-anchor-id="variable-transformations">3.7 Variable Transformations</h2>
@@ -677,7 +677,7 @@ Figure&nbsp;1
 <div id="tbl-cov-summary" class="cell quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-tbl figure">
 <figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl" id="tbl-cov-summary-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;1: Summary statistics for the four ACS covariates (N = 3,143 counties).
+Table&nbsp;1: Summary statistics for the four ACS covariates (N = 3,142 counties).
 </figcaption>
 <div aria-describedby="tbl-cov-summary-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <div class="cell-output-display">
@@ -1430,7 +1430,7 @@ loaded via a namespace (and not attached):
 <span id="cb23-36"><a href="#cb23-36" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb23-37"><a href="#cb23-37" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb23-38"><a href="#cb23-38" aria-hidden="true" tabindex="-1"></a><span class="in">CDC PLACES API ─┐</span></span>
-<span id="cb23-39"><a href="#cb23-39" aria-hidden="true" tabindex="-1"></a><span class="in">                ├─► join on 5-digit county FIPS ─► analytic dataset (N = 3,143)</span></span>
+<span id="cb23-39"><a href="#cb23-39" aria-hidden="true" tabindex="-1"></a><span class="in">                ├─► join on 5-digit county FIPS ─► analytic dataset (N = 3,142)</span></span>
 <span id="cb23-40"><a href="#cb23-40" aria-hidden="true" tabindex="-1"></a><span class="in">Census ACS API ─┘</span></span>
 <span id="cb23-41"><a href="#cb23-41" aria-hidden="true" tabindex="-1"></a><span class="in">                                                   │</span></span>
 <span id="cb23-42"><a href="#cb23-42" aria-hidden="true" tabindex="-1"></a><span class="in">                      tigris county polygons ──────┴─► spatial layer</span></span>
@@ -1611,7 +1611,7 @@ loaded via a namespace (and not attached):
 <span id="cb23-217"><a href="#cb23-217" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span> knitr<span class="sc">::</span><span class="fu">kable</span>()</span>
 <span id="cb23-218"><a href="#cb23-218" aria-hidden="true" tabindex="-1"></a><span class="in">```</span></span>
 <span id="cb23-219"><a href="#cb23-219" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb23-220"><a href="#cb23-220" aria-hidden="true" tabindex="-1"></a>The single row of attrition from PLACES → merged is the national aggregate (<span class="in">`FIPS = "US"`</span>), which has no corresponding ACS county GEOID. The larger gap between ACS raw (~3,220 counties) and merged (3,143) reflects counties that exist in the Census universe but are missing from PLACES — typically because their BRFSS sample sizes were too small for a reliable model-based estimate that release year.</span>
+<span id="cb23-220"><a href="#cb23-220" aria-hidden="true" tabindex="-1"></a>The single row of attrition from PLACES → merged is the national aggregate (<span class="in">`FIPS = "US"`</span>), which has no corresponding ACS county GEOID. The larger gap between ACS raw (~3,220 counties) and merged (3,142) reflects counties that exist in the Census universe but are missing from PLACES — typically because their BRFSS sample sizes were too small for a reliable model-based estimate that release year.</span>
 <span id="cb23-221"><a href="#cb23-221" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb23-222"><a href="#cb23-222" aria-hidden="true" tabindex="-1"></a><span class="fu">## 3.7 Variable Transformations</span></span>
 <span id="cb23-223"><a href="#cb23-223" aria-hidden="true" tabindex="-1"></a></span>
@@ -1647,7 +1647,7 @@ loaded via a namespace (and not attached):
 <span id="cb23-253"><a href="#cb23-253" aria-hidden="true" tabindex="-1"></a><span class="fu">## 4.2 Covariate Distributions</span></span>
 <span id="cb23-254"><a href="#cb23-254" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb23-255"><a href="#cb23-255" aria-hidden="true" tabindex="-1"></a><span class="in">```{r tbl-cov-summary}</span></span>
-<span id="cb23-256"><a href="#cb23-256" aria-hidden="true" tabindex="-1"></a><span class="co">#| tbl-cap: "Summary statistics for the four ACS covariates (N = 3,143 counties)."</span></span>
+<span id="cb23-256"><a href="#cb23-256" aria-hidden="true" tabindex="-1"></a><span class="co">#| tbl-cap: "Summary statistics for the four ACS covariates (N = 3,142 counties)."</span></span>
 <span id="cb23-257"><a href="#cb23-257" aria-hidden="true" tabindex="-1"></a>merged <span class="sc">|&gt;</span></span>
 <span id="cb23-258"><a href="#cb23-258" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
 <span id="cb23-259"><a href="#cb23-259" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Poverty rate (%)</span><span class="st">`</span>           <span class="ot">=</span> <span class="fu">list</span>(<span class="fu">c</span>(<span class="at">N =</span> <span class="fu">sum</span>(<span class="sc">!</span><span class="fu">is.na</span>(poverty_pct)),</span>

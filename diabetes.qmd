@@ -49,7 +49,7 @@ We link three public datasets by five-digit county FIPS code:
 | ACS 5-year | U.S. Census Bureau | County | 2021 | Poverty, uninsured, median income, % HS diploma or higher |
 | TIGER/Line cartographic boundaries | U.S. Census Bureau | County polygons | 2021 | Geometry |
 
-After an inner join on county FIPS and complete-case filtering on all covariates, the analytic sample contains **N = 3,143 counties**, covering all 50 states plus DC. Complete documentation of dataset selection (including why we chose PLACES release `duw2-7jbt` over alternatives), API queries, and exploratory plots is provided on the [About the Data](data.qmd) page.
+After an inner join on county FIPS and complete-case filtering on all covariates, the analytic sample contains **N = 3,142 counties**, covering all 50 states plus DC. Complete documentation of dataset selection (including why we chose PLACES release `duw2-7jbt` over alternatives), API queries, and exploratory plots is provided on the [About the Data](data.qmd) page.
 
 ## Analytic approach
 
@@ -97,6 +97,12 @@ if (is.null(acs)) {
            hs_or_higher_pct = hs_or_higher_pctE)
 }
 
+# Census uses large-negative "jam values" (e.g. -666666666) for suppressed /
+# non-reportable entries. Convert to NA so they are properly dropped by the
+# complete-case filter in the merge step below.
+for (v in c("poverty_pct","uninsured_pct","median_income","hs_or_higher_pct"))
+  acs[[v]][!is.na(acs[[v]]) & acs[[v]] < 0] <- NA
+
 # --- merge ---
 merged <- places |>
   inner_join(acs, by = c("fips" = "GEOID")) |>
@@ -115,7 +121,7 @@ $$
 \text{diabetes}_i = \beta_0 + \beta_1 \cdot \text{poverty}_i^{z} + \beta_2 \cdot \text{uninsured}_i^{z} + \beta_3 \cdot \text{income}_i^{z} + \beta_4 \cdot \text{HS}_i^{z} + \varepsilon_i
 $$
 
-where $i$ indexes each of the $N = 3{,}143$ counties, superscript $z$ denotes z-score standardization, and $\varepsilon_i \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma^2)$. Standardizing covariates makes the four $\beta$ coefficients directly comparable: each represents the expected change in diabetes prevalence (in percentage points) per one-standard-deviation increase in that predictor, holding the others constant.
+where $i$ indexes each of the $N = 3{,}142$ counties, superscript $z$ denotes z-score standardization, and $\varepsilon_i \overset{\text{iid}}{\sim} \mathcal{N}(0, \sigma^2)$. Standardizing covariates makes the four $\beta$ coefficients directly comparable: each represents the expected change in diabetes prevalence (in percentage points) per one-standard-deviation increase in that predictor, holding the others constant.
 
 To test whether geographic clustering persists beyond what these covariates explain, we compute **Moran's I** on the residual outcome using a queen-contiguity spatial weights matrix over the continental 48 states (Alaska and Hawaii are dropped from this particular test because they lack land adjacency to the lower-48).
 
@@ -124,7 +130,7 @@ To test whether geographic clustering persists beyond what these covariates expl
 ## Distribution of county diabetes prevalence
 
 ```{r dist}
-#| fig-cap: "Histogram of age-adjusted county diabetes prevalence (N = 3,143). Dashed line marks the mean."
+#| fig-cap: "Histogram of age-adjusted county diabetes prevalence (N = 3,142). Dashed line marks the mean."
 ggplot(merged, aes(diabetes)) +
   geom_histogram(bins = 50, fill = "#CB4B4B", color = "white") +
   geom_vline(xintercept = mean(merged$diabetes), linetype = 2) +
@@ -306,7 +312,7 @@ data.frame(Variable = names(vifs), VIF = round(vifs, 2)) |> knitr::kable()
 ## Regression results
 
 ```{r model}
-#| tbl-cap: "Multivariate OLS regression of county diabetes prevalence on four z-standardized covariates (N = 3,143). Coefficients are in percentage points per one-standard-deviation increase."
+#| tbl-cap: "Multivariate OLS regression of county diabetes prevalence on four z-standardized covariates (N = 3,142). Coefficients are in percentage points per one-standard-deviation increase."
 df <- merged |>
   mutate(poverty_z   = scale(poverty_pct)[,1],
          uninsured_z = scale(uninsured_pct)[,1],
@@ -414,7 +420,7 @@ data.frame(
 
 # Conclusion and Summary
 
-This analysis maps diagnosed diabetes prevalence across the full U.S. county landscape (N = 3,143) and quantifies the socioeconomic structure behind the classic "Diabetes Belt."
+This analysis maps diagnosed diabetes prevalence across the full U.S. county landscape (N = 3,142) and quantifies the socioeconomic structure behind the classic "Diabetes Belt."
 
 **Key findings.**
 

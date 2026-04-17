@@ -36,7 +36,7 @@ This page documents every step of the data pipeline that feeds the main [Diabete
 
 ```
 CDC PLACES API ─┐
-                ├─► join on 5-digit county FIPS ─► analytic dataset (N = 3,143)
+                ├─► join on 5-digit county FIPS ─► analytic dataset (N = 3,142)
 Census ACS API ─┘
                                                    │
                       tigris county polygons ──────┴─► spatial layer
@@ -217,7 +217,7 @@ data.frame(
 ) |> knitr::kable()
 ```
 
-The single row of attrition from PLACES → merged is the national aggregate (`FIPS = "US"`), which has no corresponding ACS county GEOID. The larger gap between ACS raw (~3,220 counties) and merged (3,143) reflects counties that exist in the Census universe but are missing from PLACES — typically because their BRFSS sample sizes were too small for a reliable model-based estimate that release year.
+The single row of attrition from PLACES → merged is the national aggregate (`FIPS = "US"`), which has no corresponding ACS county GEOID. The larger gap between ACS raw (~3,220 counties) and merged (3,142) reflects counties that exist in the Census universe but are missing from PLACES — typically because their BRFSS sample sizes were too small for a reliable model-based estimate that release year.
 
 ## 3.7 Variable Transformations
 
@@ -253,7 +253,7 @@ ggplot(merged, aes(diabetes)) +
 ## 4.2 Covariate Distributions
 
 ```{r tbl-cov-summary}
-#| tbl-cap: "Summary statistics for the four ACS covariates (N = 3,143 counties)."
+#| tbl-cap: "Summary statistics for the four ACS covariates (N = 3,142 counties)."
 merged |>
   summarise(
     `Poverty rate (%)`           = list(c(N = sum(!is.na(poverty_pct)),
